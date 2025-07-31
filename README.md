@@ -32,7 +32,6 @@ Sample user profiles are available in the repository to support development and 
 |----------|-----------|---------|
 | user101  | John      | Doe     |
 
-
 ### Stores
 Sample store data seeded for development purposes only.
 
