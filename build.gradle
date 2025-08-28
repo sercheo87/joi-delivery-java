@@ -20,6 +20,14 @@ configurations {
 	}
 }
 
+bootJar {
+    archiveFileName = 'joi-delivery-java.jar'
+}
+
+jar {
+    enabled = false
+}
+
 repositories {
 	mavenCentral()
 }

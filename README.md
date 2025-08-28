@@ -162,45 +162,42 @@ Other ways to Download and install java, [refer](https://www.oracle.com/in/java/
 
 #### Verify Java Version Installed
 ```console
- java -version
+java -version
 ```
 
 ### Useful Gradle commands
-#### List all Gradle tasks
-List all the tasks that Gradle can run, such as ```build ``` and ```test```.
-```
-$ ./gradlew tasks
-```
-
 #### Build the project
 Compiles the project, runs the test and then creates an executable JAR file
-```
+```bash
 $ ./gradlew build
 ```
-Run the application using Java and the executable JAR file produced by the Gradle ```build``` task. The application will be listening on port ```8080```.
+
+#### Run the application
+Run the application which will be listening on port ```8080```.
+```bash
+$ ./gradlew bootRun
 ```
-$ java -jar build/libs/developer-joyofenergy-java.jar
+
+Run the application using Java and the executable JAR file produced by the Gradle ```build``` task. The application will be listening on port ```8080```.
+```bash
+$ java -jar  build/libs/joi-delivery-java.jar
 ```
 
 #### Run the tests
 There are two types of tests, the unit tests and the functional tests. These can be executed as follows.
 
 * Run unit tests only
-```
+```bash
 $ ./gradlew test
 ```
-* Run functional tests only
-```
-$ ./gradlew functionalTest
-```
 * Run both unit and functional tests
-```
+```bash
 $ ./gradlew check
 ```
-
-#### Run the application
-Run the application which will be listening on port ```8080```.
+#### List all Gradle tasks
+List all the tasks that Gradle can run, such as ```build ``` and ```test```.
+```bash
+$ ./gradlew tasks
 ```
-$ ./gradlew bootRun
-```
 
+> Note: We are currently using Java 24, which is not an LTS version. Once Java 25 is released, we will upgrade to it.
