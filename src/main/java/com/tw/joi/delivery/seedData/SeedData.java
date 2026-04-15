@@ -12,13 +12,14 @@ import java.util.Random;
 
 public class SeedData {
 
+    public static GroceryStore store101 = SeedData.createStore("Fresh Picks", "store101");
+    public static GroceryStore store102 = SeedData.createStore("Natural Choice", "store102");
+
+    public static User user101= SeedData.createUser("user101", "John", "Doe");
+
     public static Map<String, Cart> cartForUsers = Map.of(
         "user101", createCartForUser("user101", "John", "Doe", "cart101"),
         "user102", createCartForUser("user102", "Rachel", "Zane", "cart102"));
-
-    public static GroceryStore store101 = SeedData.createStore("Fresh Picks", "store101");
-    public static GroceryStore store102 = SeedData.createStore("Natural Choice", "store102");
-    public static User user101= SeedData.createUser("user101", "John", "Doe");
 
     public static List<GroceryProduct> groceryProducts =
         Arrays.asList(createGroceryProduct("Wheat Bread", "product101", store101),

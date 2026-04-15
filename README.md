@@ -71,48 +71,61 @@ Request Body
 Response Body
 ```json
 {
-  "cart": {
-    "cartId": "cart101",
-    "outlet": null,
-    "products": [
-      {
-        "productId": "product103",
-        "productName": "Crackers",
-        "mrp": 10.5,
-        "sellingPrice": null,
-        "weight": 500,
-        "expiryDate": 0,
-        "threshold": 10,
-        "availableStock": 30,
-        "discount": null,
-        "store": {
-          "name": "Fresh Picks",
-          "description": null,
-          "outletId": "store101",
-          "inventory": []
-        }
-      }
-    ],
-    "user": null
-  },
-  "product": {
-    "productId": "product103",
-    "productName": "Crackers",
-    "mrp": 10.5,
-    "sellingPrice": null,
-    "weight": 500,
-    "expiryDate": 0,
-    "threshold": 10,
-    "availableStock": 30,
-    "discount": null,
-    "store": {
-      "name": "Fresh Picks",
-      "description": null,
-      "outletId": "store101",
-      "inventory": []
-    }
-  },
-  "sellingPrice": null
+	"cart": {
+		"cartId": "cart101",
+		"outlet": {
+			"name": "Fresh Picks",
+			"description": null,
+			"outletId": "store101",
+			"inventory": []
+		},
+		"products": [
+			{
+				"productId": "product101",
+				"productName": "Wheat Bread",
+				"mrp": 10.5,
+				"sellingPrice": null,
+				"weight": 500.0,
+				"expiryDate": 0,
+				"threshold": 10,
+				"availableStock": 30,
+				"discount": null,
+				"store": {
+					"name": "Fresh Picks",
+					"description": null,
+					"outletId": "store101",
+					"inventory": []
+				}
+			}
+		],
+		"user": {
+			"userId": "user101",
+			"username": null,
+			"firstName": "John",
+			"lastName": "Doe",
+			"email": "John.Doe@gmail.com",
+			"phoneNumber": "519898286",
+			"cart": null
+		}
+	},
+	"product": {
+		"productId": "product101",
+		"productName": "Wheat Bread",
+		"mrp": 10.5,
+		"sellingPrice": null,
+		"weight": 500.0,
+		"expiryDate": 0,
+		"threshold": 10,
+		"availableStock": 30,
+		"discount": null,
+		"store": {
+			"name": "Fresh Picks",
+			"description": null,
+			"outletId": "store101",
+			"inventory": []
+		}
+	},
+	"sellingPrice": null
 }
 ```
 
@@ -124,10 +137,41 @@ GET /cart/view?userId=user101
 Response Body
 ```json
 {
-  "cartId": "cart101",
-  "outlet": null,
-  "products": [],
-  "user": null
+	"cartId": "cart101",
+	"outlet": {
+		"name": "Fresh Picks",
+		"description": null,
+		"outletId": "store101",
+		"inventory": []
+	},
+	"products": [
+		{
+			"productId": "product101",
+			"productName": "Wheat Bread",
+			"mrp": 10.5,
+			"sellingPrice": null,
+			"weight": 500.0,
+			"expiryDate": 0,
+			"threshold": 10,
+			"availableStock": 30,
+			"discount": null,
+			"store": {
+				"name": "Fresh Picks",
+				"description": null,
+				"outletId": "store101",
+				"inventory": []
+			}
+		}
+	],
+	"user": {
+		"userId": "user101",
+		"username": null,
+		"firstName": "John",
+		"lastName": "Doe",
+		"email": "John.Doe@gmail.com",
+		"phoneNumber": "519898286",
+		"cart": null
+	}
 }
 ```
 
