@@ -37,6 +37,7 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         SeedData.orders.clear();
+        SeedData.trackingEvents.clear();
 
         store = GroceryStore.builder()
             .outletId("store101")
@@ -188,5 +189,104 @@ class OrderServiceTest {
         Order cancelled = orderService.cancelOrder(placed.getOrderId(), "user101");
 
         assertThat(cancelled.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    // updateOrderStatus tests
+
+    @Test
+    void shouldUpdateOrderStatusSuccessfully() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+
+        Order updated = orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.PREPARING);
+
+        assertThat(updated.getStatus()).isEqualTo(OrderStatus.PREPARING);
+    }
+
+    @Test
+    void shouldCreateTrackingEventOnStatusUpdate() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+
+        orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.PREPARING);
+
+        assertThat(SeedData.trackingEvents).hasSize(1);
+        assertThat(SeedData.trackingEvents.get(0).getOrderId()).isEqualTo(placed.getOrderId());
+        assertThat(SeedData.trackingEvents.get(0).getStatus()).isEqualTo(OrderStatus.PREPARING);
+        assertThat(SeedData.trackingEvents.get(0).getMessage()).isNotBlank();
+        assertThat(SeedData.trackingEvents.get(0).getTimestamp()).isNotNull();
+    }
+
+    @Test
+    void shouldAllowFullForwardStatusProgression() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+
+        orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.PREPARING);
+        orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.OUT_FOR_DELIVERY);
+        Order delivered = orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.DELIVERED);
+
+        assertThat(delivered.getStatus()).isEqualTo(OrderStatus.DELIVERED);
+        assertThat(SeedData.trackingEvents).hasSize(3);
+    }
+
+    @Test
+    void shouldThrow404WhenUpdatingNonExistentOrder() {
+        assertThatThrownBy(() -> orderService.updateOrderStatus("order-nonexistent", "user101", OrderStatus.PREPARING))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("Order not found");
+    }
+
+    @Test
+    void shouldThrow403WhenUpdatingOrderBelongingToAnotherUser() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+
+        assertThatThrownBy(() -> orderService.updateOrderStatus(placed.getOrderId(), "user999", OrderStatus.PREPARING))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("Order does not belong to the user");
+    }
+
+    @Test
+    void shouldThrow400WhenUpdatingCancelledOrder() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+        placed.setStatus(OrderStatus.CANCELLED);
+
+        assertThatThrownBy(() -> orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.PREPARING))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("Cannot update a cancelled order");
+    }
+
+    @Test
+    void shouldThrow400WhenSkippingStatus() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+
+        assertThatThrownBy(() -> orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.DELIVERED))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("Invalid status transition");
+    }
+
+    @Test
+    void shouldThrow400WhenGoingBackwardsInStatus() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+        placed.setStatus(OrderStatus.OUT_FOR_DELIVERY);
+
+        assertThatThrownBy(() -> orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.PREPARING))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("Invalid status transition");
+    }
+
+    @Test
+    void shouldThrow400WhenTransitionFromDelivered() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+        placed.setStatus(OrderStatus.DELIVERED);
+
+        assertThatThrownBy(() -> orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.OUT_FOR_DELIVERY))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("Invalid status transition");
     }
 }

@@ -21,7 +21,7 @@ public class InventoryService {
         GroceryStore store = storeService.findById(storeId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Store not found: " + storeId));
 
-        List<ProductStockInfo> productInfos = productService.getProductsByStore(storeId).stream()
+        List<ProductStockInfo> productInfos = productService.getGroceryProductsByStore(storeId).stream()
             .map(this::toProductStockInfo)
             .toList();
 

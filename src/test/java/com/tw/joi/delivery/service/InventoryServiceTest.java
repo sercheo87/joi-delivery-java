@@ -10,7 +10,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 class InventoryServiceTest {
 
-    private final InventoryService inventoryService = new InventoryService(new StoreService(), new ProductService());
+    private final StoreService storeService = new StoreService();
+    private final InventoryService inventoryService = new InventoryService(storeService, new ProductService(storeService));
 
     @Test
     @DisplayName("Given a valid store id, when inventory health is requested, then health details are returned")

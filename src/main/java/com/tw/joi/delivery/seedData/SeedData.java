@@ -4,6 +4,7 @@ import com.tw.joi.delivery.domain.Cart;
 import com.tw.joi.delivery.domain.GroceryProduct;
 import com.tw.joi.delivery.domain.GroceryStore;
 import com.tw.joi.delivery.domain.Order;
+import com.tw.joi.delivery.domain.TrackingEvent;
 import com.tw.joi.delivery.domain.User;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -26,11 +27,17 @@ public class SeedData {
     public static List<GroceryProduct> groceryProducts =
         Arrays.asList(createGroceryProduct("Wheat Bread", "product101", store101),
                       createGroceryProduct("Spinach", "product102", store101),
-                      createGroceryProduct("Crackers", "product103", store101));
+                      createGroceryProduct("Crackers", "product103", store101),
+                      createGroceryProduct("Oats", "product104", store102),
+                      createGroceryProduct("Brown Rice", "product105", store102));
+
+    public static List<GroceryStore> groceryStores = Arrays.asList(store101, store102);
 
     public static List<User> users = Arrays.asList(user101);
 
     public static final List<Order> orders = new ArrayList<>();
+
+    public static final List<TrackingEvent> trackingEvents = new ArrayList<>();
 
     public static Cart createCartForUser(String userId, String firstName, String lastName,
                                          String cartId) {
