@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.tw.joi.delivery.domain.Cart;
 import com.tw.joi.delivery.domain.GroceryProduct;
 import com.tw.joi.delivery.domain.GroceryStore;
+import com.tw.joi.delivery.domain.Notification;
 import com.tw.joi.delivery.domain.Order;
 import com.tw.joi.delivery.domain.OrderStatus;
 import com.tw.joi.delivery.seedData.SeedData;
@@ -38,6 +39,7 @@ class OrderServiceTest {
     void setUp() {
         SeedData.orders.clear();
         SeedData.trackingEvents.clear();
+        SeedData.notifications.clear();
 
         store = GroceryStore.builder()
             .outletId("store101")
@@ -288,5 +290,55 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.OUT_FOR_DELIVERY))
             .isInstanceOf(ResponseStatusException.class)
             .hasMessageContaining("Invalid status transition");
+    }
+
+    // Notification tests
+
+    @Test
+    void shouldCreateNotificationWhenPlacingOrder() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+
+        orderService.placeOrder("user101");
+
+        assertThat(SeedData.notifications).hasSize(1);
+        Notification notification = SeedData.notifications.get(0);
+        assertThat(notification.getUserId()).isEqualTo("user101");
+        assertThat(notification.getTitle()).isEqualTo("Order Confirmed");
+        assertThat(notification.getMessage()).contains(SeedData.orders.get(0).getOrderId());
+        assertThat(notification.isRead()).isFalse();
+        assertThat(notification.getCreatedAt()).isNotNull();
+    }
+
+    @Test
+    void shouldCreateNotificationWhenUpdatingOrderStatus() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+        SeedData.notifications.clear(); // clear the placement notification
+
+        orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.PREPARING);
+
+        assertThat(SeedData.notifications).hasSize(1);
+        Notification notification = SeedData.notifications.get(0);
+        assertThat(notification.getUserId()).isEqualTo("user101");
+        assertThat(notification.getOrderId()).isEqualTo(placed.getOrderId());
+        assertThat(notification.getTitle()).isEqualTo("Order Being Prepared");
+        assertThat(notification.getMessage()).contains(placed.getOrderId());
+        assertThat(notification.isRead()).isFalse();
+    }
+
+    @Test
+    void shouldCreateCorrectNotificationForEachStatusTransition() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        Order placed = orderService.placeOrder("user101");
+        SeedData.notifications.clear();
+
+        orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.PREPARING);
+        orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.OUT_FOR_DELIVERY);
+        orderService.updateOrderStatus(placed.getOrderId(), "user101", OrderStatus.DELIVERED);
+
+        assertThat(SeedData.notifications).hasSize(3);
+        assertThat(SeedData.notifications.get(0).getTitle()).isEqualTo("Order Being Prepared");
+        assertThat(SeedData.notifications.get(1).getTitle()).isEqualTo("Order Out for Delivery");
+        assertThat(SeedData.notifications.get(2).getTitle()).isEqualTo("Order Delivered");
     }
 }

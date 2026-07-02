@@ -33,6 +33,7 @@ class TrackingControllerTest {
     void setUp() throws Exception {
         SeedData.orders.clear();
         SeedData.trackingEvents.clear();
+        SeedData.notifications.clear();
 
         Cart cart = SeedData.cartForUsers.get("user101");
         cart.setProducts(new ArrayList<>(SeedData.groceryProducts.subList(0, 1)));
