@@ -35,6 +35,14 @@ public class ProductService {
             .toList();
     }
 
+    public List<GroceryProduct> getGroceryProductsByStore(String storeId) {
+        storeService.findById(storeId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Store not found: " + storeId));
+        return products.stream()
+            .filter(p -> p.getStore().getOutletId().equals(storeId))
+            .toList();
+    }
+
     public List<ProductSearchResponse> searchProducts(String query) {
         return products.stream()
             .filter(p -> p.getProductName().toLowerCase().contains(query.toLowerCase()))

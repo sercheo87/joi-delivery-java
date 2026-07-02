@@ -21,7 +21,7 @@ class CartServiceTest {
     @BeforeEach
     void setUp() {
         SeedData.cartForUsers.get(USER_ID).getProducts().clear();
-        cartService = new CartService(new UserService(), new ProductService());
+        cartService = new CartService(new UserService(), new ProductService(new StoreService()));
     }
 
     @Test

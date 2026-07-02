@@ -28,6 +28,7 @@ class OrderControllerTest {
     @BeforeEach
     void setUp() {
         SeedData.orders.clear();
+        SeedData.trackingEvents.clear();
         Cart cart = SeedData.cartForUsers.get("user101");
         cart.setProducts(new ArrayList<>(SeedData.groceryProducts.subList(0, 1)));
     }
@@ -129,5 +130,81 @@ class OrderControllerTest {
                             .param("userId", "user999")
                             .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldUpdateOrderStatusSuccessfully() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.post("/orders/place")
+                            .param("userId", "user101")
+                            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated());
+
+        Order order = SeedData.orders.get(0);
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/orders/{orderId}/status", order.getOrderId())
+                            .param("userId", "user101")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"PREPARING\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.orderId").value(order.getOrderId()))
+            .andExpect(jsonPath("$.status").value("PREPARING"));
+    }
+
+    @Test
+    void shouldReturn400WhenInvalidStatusTransition() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.post("/orders/place")
+                            .param("userId", "user101")
+                            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated());
+
+        Order order = SeedData.orders.get(0);
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/orders/{orderId}/status", order.getOrderId())
+                            .param("userId", "user101")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"DELIVERED\"}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn403WhenUpdatingOrderBelongingToAnotherUser() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.post("/orders/place")
+                            .param("userId", "user101")
+                            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated());
+
+        Order order = SeedData.orders.get(0);
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/orders/{orderId}/status", order.getOrderId())
+                            .param("userId", "user999")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"PREPARING\"}"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldReturn404WhenUpdatingNonExistentOrder() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.patch("/orders/{orderId}/status", "order-nonexistent")
+                            .param("userId", "user101")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"PREPARING\"}"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenUpdatingCancelledOrder() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.post("/orders/place")
+                            .param("userId", "user101")
+                            .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated());
+
+        Order order = SeedData.orders.get(0);
+        order.setStatus(OrderStatus.CANCELLED);
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/orders/{orderId}/status", order.getOrderId())
+                            .param("userId", "user101")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"PREPARING\"}"))
+            .andExpect(status().isBadRequest());
     }
 }
