@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class StoreService {
 
-    private final List<GroceryStore> stores = List.of(SeedData.store101, SeedData.store102);
+    private final List<GroceryStore> stores = SeedData.groceryStores;
 
     public Optional<GroceryStore> findById(String storeId) {
         return stores.stream()

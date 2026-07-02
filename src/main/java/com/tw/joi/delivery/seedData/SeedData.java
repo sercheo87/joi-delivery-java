@@ -21,10 +21,14 @@ public class SeedData {
         "user101", createCartForUser("user101", "John", "Doe", "cart101"),
         "user102", createCartForUser("user102", "Rachel", "Zane", "cart102"));
 
+    public static List<GroceryStore> groceryStores = Arrays.asList(store101, store102);
+
     public static List<GroceryProduct> groceryProducts =
         Arrays.asList(createGroceryProduct("Wheat Bread", "product101", store101),
                       createGroceryProduct("Spinach", "product102", store101),
-                      createGroceryProduct("Crackers", "product103", store101));
+                      createGroceryProduct("Crackers", "product103", store101),
+                      createGroceryProduct("Organic Milk", "product104", store102),
+                      createGroceryProduct("Brown Rice", "product105", store102));
 
     public static List<User> users = Arrays.asList(user101);
 
