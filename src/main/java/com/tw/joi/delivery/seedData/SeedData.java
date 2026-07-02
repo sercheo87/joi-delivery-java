@@ -3,8 +3,10 @@ package com.tw.joi.delivery.seedData;
 import com.tw.joi.delivery.domain.Cart;
 import com.tw.joi.delivery.domain.GroceryProduct;
 import com.tw.joi.delivery.domain.GroceryStore;
+import com.tw.joi.delivery.domain.Order;
 import com.tw.joi.delivery.domain.User;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -21,16 +23,14 @@ public class SeedData {
         "user101", createCartForUser("user101", "John", "Doe", "cart101"),
         "user102", createCartForUser("user102", "Rachel", "Zane", "cart102"));
 
-    public static List<GroceryStore> groceryStores = Arrays.asList(store101, store102);
-
     public static List<GroceryProduct> groceryProducts =
         Arrays.asList(createGroceryProduct("Wheat Bread", "product101", store101),
                       createGroceryProduct("Spinach", "product102", store101),
-                      createGroceryProduct("Crackers", "product103", store101),
-                      createGroceryProduct("Organic Milk", "product104", store102),
-                      createGroceryProduct("Brown Rice", "product105", store102));
+                      createGroceryProduct("Crackers", "product103", store101));
 
     public static List<User> users = Arrays.asList(user101);
+
+    public static final List<Order> orders = new ArrayList<>();
 
     public static Cart createCartForUser(String userId, String firstName, String lastName,
                                          String cartId) {
