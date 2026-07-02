@@ -177,15 +177,30 @@ Response Body
 
 ### Inventory Health
 ```http
-GET /inventory/health?storeid=<storeid>
+GET /inventory/health?storeId=<storeId>
 ```
 
-Response Body 
-```json lines
+Response Body
+```json
 {
-    // to be implemented.
+    "storeId": "store101",
+    "storeName": "Fresh Picks",
+    "overallStatus": "HEALTHY",
+    "products": [
+        {
+            "productId": "product101",
+            "productName": "Wheat Bread",
+            "availableStock": 30,
+            "threshold": 10,
+            "stockStatus": "HEALTHY"
+        }
+    ]
 }
 ```
+
+`stockStatus` values: `HEALTHY` (stock above threshold), `LOW_STOCK` (at or below threshold), `OUT_OF_STOCK` (no stock).
+
+`overallStatus` values: `HEALTHY`, `LOW_STOCK` (any product low), `CRITICAL` (any product out of stock).
 
 ## Tech Requirements
 The project requires Java 25. If you have multiple JVMs on your machine, you might want to
