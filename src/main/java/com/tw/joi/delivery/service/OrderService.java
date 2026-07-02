@@ -1,6 +1,7 @@
 package com.tw.joi.delivery.service;
 
 import com.tw.joi.delivery.domain.Cart;
+import com.tw.joi.delivery.domain.Notification;
 import com.tw.joi.delivery.domain.Order;
 import com.tw.joi.delivery.domain.OrderStatus;
 import com.tw.joi.delivery.domain.Product;
@@ -48,6 +49,17 @@ public class OrderService {
         SeedData.orders.add(order);
         cart.setProducts(new ArrayList<>());
 
+        Notification confirmation = Notification.builder()
+            .notificationId(UUID.randomUUID().toString())
+            .userId(userId)
+            .orderId(order.getOrderId())
+            .title("Order Confirmed")
+            .message("Your order #" + order.getOrderId() + " has been confirmed and is being prepared.")
+            .read(false)
+            .createdAt(LocalDateTime.now())
+            .build();
+        SeedData.notifications.add(confirmation);
+
         return order;
     }
 
@@ -89,6 +101,20 @@ public class OrderService {
         OrderStatus.CANCELLED, "Order has been cancelled"
     );
 
+    private static final Map<OrderStatus, String> NOTIFICATION_TITLES = Map.of(
+        OrderStatus.PREPARING, "Order Being Prepared",
+        OrderStatus.OUT_FOR_DELIVERY, "Order Out for Delivery",
+        OrderStatus.DELIVERED, "Order Delivered",
+        OrderStatus.CANCELLED, "Order Cancelled"
+    );
+
+    private static final Map<OrderStatus, String> NOTIFICATION_MESSAGES = Map.of(
+        OrderStatus.PREPARING, "Your order #%s is now being prepared.",
+        OrderStatus.OUT_FOR_DELIVERY, "Your order #%s is out for delivery and will arrive soon.",
+        OrderStatus.DELIVERED, "Your order #%s has been delivered. Enjoy!",
+        OrderStatus.CANCELLED, "Your order #%s has been cancelled."
+    );
+
     public Order updateOrderStatus(String orderId, String userId, OrderStatus newStatus) {
         Order order = SeedData.orders.stream()
             .filter(o -> orderId.equals(o.getOrderId()))
@@ -119,6 +145,19 @@ public class OrderService {
             .timestamp(LocalDateTime.now())
             .build();
         SeedData.trackingEvents.add(event);
+
+        String notifTitle = NOTIFICATION_TITLES.getOrDefault(newStatus, newStatus.name());
+        String notifMessageTemplate = NOTIFICATION_MESSAGES.getOrDefault(newStatus, "Your order #%s status has been updated to " + newStatus.name() + ".");
+        Notification notification = Notification.builder()
+            .notificationId(UUID.randomUUID().toString())
+            .userId(order.getUserId())
+            .orderId(orderId)
+            .title(notifTitle)
+            .message(String.format(notifMessageTemplate, orderId))
+            .read(false)
+            .createdAt(LocalDateTime.now())
+            .build();
+        SeedData.notifications.add(notification);
 
         return order;
     }

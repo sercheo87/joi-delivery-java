@@ -3,6 +3,7 @@ package com.tw.joi.delivery.seedData;
 import com.tw.joi.delivery.domain.Cart;
 import com.tw.joi.delivery.domain.GroceryProduct;
 import com.tw.joi.delivery.domain.GroceryStore;
+import com.tw.joi.delivery.domain.Notification;
 import com.tw.joi.delivery.domain.Order;
 import com.tw.joi.delivery.domain.TrackingEvent;
 import com.tw.joi.delivery.domain.User;
@@ -38,6 +39,8 @@ public class SeedData {
     public static final List<Order> orders = new ArrayList<>();
 
     public static final List<TrackingEvent> trackingEvents = new ArrayList<>();
+
+    public static final List<Notification> notifications = new ArrayList<>();
 
     public static Cart createCartForUser(String userId, String firstName, String lastName,
                                          String cartId) {
