@@ -19,4 +19,10 @@ public class ProductService {
             .orElse(null);
     }
 
+    public List<GroceryProduct> getProductsByStore(String storeId) {
+        return products.stream()
+            .filter(p -> p.getStore().getOutletId().equals(storeId))
+            .toList();
+    }
+
 }
