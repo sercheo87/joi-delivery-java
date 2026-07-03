@@ -22,8 +22,7 @@ public class FeedbackController {
 
     @PostMapping
     public ResponseEntity<Feedback> submitFeedback(@RequestBody SubmitFeedbackRequest request) {
-        log.info("POST /feedback userId={} orderId={} type={} rating={}",
-            request.userId(), request.orderId(), request.type(), request.rating());
+        log.info("POST /feedback userId={} orderId={} type={} rating={}", request.userId(), request.orderId(), request.type(), request.rating());
         Feedback feedback = feedbackService.submitFeedback(
             request.userId(), request.orderId(), request.type(), request.rating(), request.comment());
         return ResponseEntity.status(HttpStatus.CREATED).body(feedback);

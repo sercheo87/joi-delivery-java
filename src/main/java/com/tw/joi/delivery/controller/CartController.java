@@ -19,8 +19,7 @@ public class CartController {
 
     @PostMapping("/product")
     public ResponseEntity<CartProductInfo> addProductToCart(@RequestBody AddProductRequest addProductRequest) {
-        log.info("POST /cart/product userId={} productId={} outletId={}",
-            addProductRequest.getUserId(), addProductRequest.getProductId(), addProductRequest.getOutletId());
+        log.info("POST /cart/product userId={} productId={} outletId={}", addProductRequest.getUserId(), addProductRequest.getProductId(), addProductRequest.getOutletId());
         return ResponseEntity.ok(cartService.addProductToCartForUser(addProductRequest));
     }
 

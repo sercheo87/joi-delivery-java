@@ -93,8 +93,7 @@ public class OrderService {
             .build();
         SeedData.notifications.add(confirmation);
 
-        log.info("Order placed: orderId={} userId={} outletId={} totalAmount={} items={}",
-            order.getOrderId(), userId, order.getOutletId(), totalAmount, order.getProducts().size());
+        log.info("Order placed: orderId={} userId={} outletId={} totalAmount={} items={}", order.getOrderId(), userId, order.getOutletId(), totalAmount, order.getProducts().size());
         return order;
     }
 
@@ -116,8 +115,7 @@ public class OrderService {
             });
 
         if (!userId.equals(order.getUserId())) {
-            log.warn("Cancel order rejected — order does not belong to user: orderId={} requestedBy={} owner={}",
-                orderId, userId, order.getUserId());
+            log.warn("Cancel order rejected — order does not belong to user: orderId={} requestedBy={} owner={}", orderId, userId, order.getUserId());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order does not belong to the user");
         }
 
@@ -161,8 +159,7 @@ public class OrderService {
             });
 
         if (!userId.equals(order.getUserId())) {
-            log.warn("Update status rejected — order does not belong to user: orderId={} requestedBy={} owner={}",
-                orderId, userId, order.getUserId());
+            log.warn("Update status rejected — order does not belong to user: orderId={} requestedBy={} owner={}", orderId, userId, order.getUserId());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order does not belong to the user");
         }
 
@@ -173,8 +170,7 @@ public class OrderService {
 
         OrderStatus expectedNext = VALID_TRANSITIONS.get(order.getStatus());
         if (expectedNext == null || expectedNext != newStatus) {
-            log.warn("Update status rejected — invalid transition: orderId={} from={} to={}",
-                orderId, order.getStatus(), newStatus);
+            log.warn("Update status rejected — invalid transition: orderId={} from={} to={}", orderId, order.getStatus(), newStatus);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Invalid status transition from " + order.getStatus() + " to " + newStatus);
         }
