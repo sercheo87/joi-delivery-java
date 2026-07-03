@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SeedData {
 
@@ -47,6 +48,8 @@ public class SeedData {
     public static final List<Payment> payments = new ArrayList<>();
 
     public static final List<Feedback> feedbacks = new ArrayList<>();
+
+    public static final Map<String, Payment> idempotencyStore = new ConcurrentHashMap<>();
 
     public static Cart createCartForUser(String userId, String firstName, String lastName,
                                          String cartId) {

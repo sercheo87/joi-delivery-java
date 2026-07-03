@@ -17,7 +17,10 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class PaymentService {
 
-    public Payment initiatePayment(String orderId, String userId, PaymentMethod method) {
+    public Payment initiatePayment(String orderId, String userId, PaymentMethod method, String idempotencyKey) {
+        Payment cached = SeedData.idempotencyStore.get(idempotencyKey);
+        if (cached != null) return cached;
+
         Order order = SeedData.orders.stream()
             .filter(o -> orderId.equals(o.getOrderId()))
             .findFirst()
@@ -83,6 +86,7 @@ public class PaymentService {
         }
 
         SeedData.payments.add(payment);
+        SeedData.idempotencyStore.put(idempotencyKey, payment);
         return payment;
     }
 
