@@ -216,21 +216,25 @@ DELETE /orders/{id}     availableStock += 1   (compensating transaction — rele
 
 **How it works:**
 
-```
-Client                          API                        idempotencyStore (Map)
-  │                              │                                │
-  │── POST /payments/initiate ──►│                                │
-  │   X-Idempotency-Key: abc123  │── get("abc123") ─────────────►│ (miss)
-  │                              │                                │
-  │                              │  [process payment]             │
-  │                              │── put("abc123", payment) ─────►│
-  │◄─ 201 { paymentId: "p-1" } ──│                                │
-  │                              │                                │
-  │  [timeout / retry]           │                                │
-  │── POST /payments/initiate ──►│                                │
-  │   X-Idempotency-Key: abc123  │── get("abc123") ─────────────►│ (hit)
-  │◄─ 201 { paymentId: "p-1" } ──│◄── return cached payment ──────│
-  │   (same result, no charge)   │                                │
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as API<br/>(PaymentController)
+    participant Store as idempotencyStore<br/>(ConcurrentHashMap)
+
+    Note over C,Store: First request
+    C->>API: POST /payments/initiate<br/>X-Idempotency-Key: abc123
+    API->>Store: get("abc123")
+    Store-->>API: null (miss)
+    API->>API: Process payment
+    API->>Store: put("abc123", payment)
+    API-->>C: 201 { paymentId: "p-1", status: "SUCCESS" }
+
+    Note over C,Store: Retry (timeout / network error)
+    C->>API: POST /payments/initiate<br/>X-Idempotency-Key: abc123
+    API->>Store: get("abc123")
+    Store-->>API: payment (hit)
+    API-->>C: 201 { paymentId: "p-1", status: "SUCCESS" }<br/>(cached — no duplicate charge)
 ```
 
 **Rules:**
@@ -242,31 +246,31 @@ Client                          API                        idempotencyStore (Map
 
 ## API Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/products?storeId=` | List products for a store |
-| `GET` | `/products/search?query=` | Search products by name (all stores) |
-| `GET` | `/products/{productId}?storeId=` | Get product detail |
-| `POST` | `/cart/product` | Add product to cart |
-| `GET` | `/cart/view?userId=` | View cart |
-| `GET` | `/inventory/health?storeId=` | Inventory health for a store |
-| `POST` | `/orders/place?userId=` | Place order from cart |
-| `GET` | `/orders?userId=` | List orders for a user |
-| `DELETE` | `/orders/{orderId}?userId=` | Cancel an order |
-| `PATCH` | `/orders/{orderId}/status?userId=` | Update order status |
-| `GET` | `/tracking/{orderId}` | Full tracking history for an order |
-| `GET` | `/tracking/{orderId}/status` | Latest tracking status |
-| `POST` | `/payments/initiate` | Initiate a payment _(requires `X-Idempotency-Key` header)_ |
-| `GET` | `/payments/order/{orderId}?userId=` | Get payment for an order |
-| `POST` | `/payments/{paymentId}/refund?userId=` | Refund a payment |
-| `GET` | `/notifications?userId=` | List notifications |
-| `GET` | `/notifications/unread-count?userId=` | Count unread notifications |
-| `PATCH` | `/notifications/{id}/read?userId=` | Mark notification as read |
-| `PATCH` | `/notifications/read-all?userId=` | Mark all notifications as read |
-| `POST` | `/feedback` | Submit a rating and comment |
-| `GET` | `/feedback/user?userId=` | Get all feedback submitted by a user |
-| `GET` | `/feedback/order/{orderId}` | Get all feedback for a specific order |
-| `GET` | `/feedback/store/{storeId}/rating` | Get average rating for a store |
+| Method   | Path                                   | Description                                                |
+|----------|----------------------------------------|------------------------------------------------------------|
+| `GET`    | `/products?storeId=`                   | List products for a store                                  |
+| `GET`    | `/products/search?query=`              | Search products by name (all stores)                       |
+| `GET`    | `/products/{productId}?storeId=`       | Get product detail                                         |
+| `POST`   | `/cart/product`                        | Add product to cart                                        |
+| `GET`    | `/cart/view?userId=`                   | View cart                                                  |
+| `GET`    | `/inventory/health?storeId=`           | Inventory health for a store                               |
+| `POST`   | `/orders/place?userId=`                | Place order from cart                                      |
+| `GET`    | `/orders?userId=`                      | List orders for a user                                     |
+| `DELETE` | `/orders/{orderId}?userId=`            | Cancel an order                                            |
+| `PATCH`  | `/orders/{orderId}/status?userId=`     | Update order status                                        |
+| `GET`    | `/tracking/{orderId}`                  | Full tracking history for an order                         |
+| `GET`    | `/tracking/{orderId}/status`           | Latest tracking status                                     |
+| `POST`   | `/payments/initiate`                   | Initiate a payment _(requires `X-Idempotency-Key` header)_ |
+| `GET`    | `/payments/order/{orderId}?userId=`    | Get payment for an order                                   |
+| `POST`   | `/payments/{paymentId}/refund?userId=` | Refund a payment                                           |
+| `GET`    | `/notifications?userId=`               | List notifications                                         |
+| `GET`    | `/notifications/unread-count?userId=`  | Count unread notifications                                 |
+| `PATCH`  | `/notifications/{id}/read?userId=`     | Mark notification as read                                  |
+| `PATCH`  | `/notifications/read-all?userId=`      | Mark all notifications as read                             |
+| `POST`   | `/feedback`                            | Submit a rating and comment                                |
+| `GET`    | `/feedback/user?userId=`               | Get all feedback submitted by a user                       |
+| `GET`    | `/feedback/order/{orderId}`            | Get all feedback for a specific order                      |
+| `GET`    | `/feedback/store/{storeId}/rating`     | Get average rating for a store                             |
 
 ---
 
