@@ -1,12 +1,40 @@
 spring:
   application:
-    name: delivery
-  datasource:
-    url: jdbc:h2:mem:joidelivery
-    username: sa
-    password: password
-    driverClassName: org.h2.Driver
-  jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
-    hibernate:
-      ddl-auto: create
+    name: joi-delivery
+
+logging:
+  level:
+    root: INFO
+    com.tw.joi.delivery: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [${spring.application.name},%X{traceId:-},%X{spanId:-}] [%thread] %logger{36} --- %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers,prometheus,httpexchanges
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    httpexchanges:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    build:
+      enabled: true
+
+  tracing:
+    sampling:
+      probability: 1.0
+
+info:
+  app:
+    name: ${spring.application.name}
+    description: JOI Delivery — grocery delivery REST API
+    version: 1.0.0
