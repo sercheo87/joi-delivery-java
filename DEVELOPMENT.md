@@ -1,5 +1,60 @@
 # JOI Delivery — Development Guide
 
+## Business Flow
+
+End-to-end journey of a customer from discovering products to receiving their delivery.
+
+```mermaid
+flowchart TD
+    A([🛒 Customer opens app]) --> B[Browse stores & products\nGET /products?storeId=]
+    B --> C{Found what\nthey need?}
+    C -- No --> B
+    C -- Yes --> D[Search by name\nGET /products/search?query=]
+    D --> E[Add product to cart\nPOST /cart/product]
+    E --> F{Add more\nproducts?}
+    F -- Yes --> B
+    F -- No --> G[Review cart\nGET /cart/view]
+
+    G --> H[Place order\nPOST /orders/place]
+    H --> I[🔔 Notification: Order Confirmed]
+    I --> J[Choose payment method\nCredit Card / UPI / Cash on Delivery]
+    J --> K[Initiate payment\nPOST /payments/initiate]
+
+    K --> L{Payment\nsuccessful?}
+    L -- No --> M[🔔 Notification: Payment Failed]
+    M --> N[Retry payment]
+    N --> K
+
+    L -- Yes --> O[🔔 Notification: Payment Successful]
+    O --> P[Order being prepared\nStatus: PREPARING]
+    P --> Q[🔔 Notification: Preparing your order]
+    Q --> R[Rider picks up order\nStatus: OUT_FOR_DELIVERY]
+    R --> S[🔔 Notification: Order on its way]
+    S --> T[Track in real time\nGET /tracking/orderId/status]
+    T --> U[Order delivered\nStatus: DELIVERED]
+    U --> V[🔔 Notification: Order Delivered]
+
+    V --> W{Need a\nrefund?}
+    W -- Yes --> X[Request refund\nPOST /payments/paymentId/refund]
+    X --> Y[🔔 Notification: Payment Refunded]
+    W -- No --> Z([✅ Done])
+    Y --> Z
+
+    style A fill:#4CAF50,color:#fff
+    style Z fill:#4CAF50,color:#fff
+    style I fill:#2196F3,color:#fff
+    style O fill:#2196F3,color:#fff
+    style Q fill:#2196F3,color:#fff
+    style S fill:#2196F3,color:#fff
+    style V fill:#2196F3,color:#fff
+    style Y fill:#2196F3,color:#fff
+    style M fill:#f44336,color:#fff
+```
+
+> **🔔 Notifications** are generated automatically at every key transition — the customer is always informed without having to poll for status.
+
+---
+
 ## Architecture Overview
 
 JOI Delivery is a Spring Boot 3.5.3 / Java 25 REST API. All data lives in-memory via `SeedData` — there is no database. The application is structured in three layers: Controllers → Services → Domain/SeedData.
