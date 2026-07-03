@@ -3,6 +3,7 @@ package com.tw.joi.delivery.controller;
 import com.tw.joi.delivery.domain.Payment;
 import com.tw.joi.delivery.dto.request.InitiatePaymentRequest;
 import com.tw.joi.delivery.service.PaymentService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -20,7 +21,7 @@ public class PaymentController {
     @PostMapping("/initiate")
     public ResponseEntity<Payment> initiatePayment(
         @RequestHeader("X-Idempotency-Key") String idempotencyKey,
-        @RequestBody InitiatePaymentRequest request) {
+        @Valid @RequestBody InitiatePaymentRequest request) {
         log.info("POST /payments/initiate orderId={} userId={} method={} idempotencyKey={}", request.orderId(), request.userId(), request.method(), idempotencyKey);
         Payment payment = paymentService.initiatePayment(request.orderId(), request.userId(), request.method(), idempotencyKey);
         return ResponseEntity.status(HttpStatus.CREATED).body(payment);

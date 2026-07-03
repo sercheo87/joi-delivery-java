@@ -75,6 +75,10 @@ public class OrderService {
         order.getProducts().forEach(p -> {
             if (p instanceof GroceryProduct gp) {
                 int before = gp.getAvailableStock();
+                if (before <= 0) {
+                    log.warn("Stock depleted at order time — cannot reserve: productId={}", gp.getProductId());
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Product " + gp.getProductId() + " is out of stock");
+                }
                 gp.setAvailableStock(before - 1);
                 log.info("Stock reserved: productId={} stock {}→{}", gp.getProductId(), before, gp.getAvailableStock());
             }

@@ -4,6 +4,7 @@ import com.tw.joi.delivery.domain.Cart;
 import com.tw.joi.delivery.dto.request.AddProductRequest;
 import com.tw.joi.delivery.dto.response.CartProductInfo;
 import com.tw.joi.delivery.service.CartService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ public class CartController {
     private final CartService cartService;
 
     @PostMapping("/product")
-    public ResponseEntity<CartProductInfo> addProductToCart(@RequestBody AddProductRequest addProductRequest) {
+    public ResponseEntity<CartProductInfo> addProductToCart(@Valid @RequestBody AddProductRequest addProductRequest) {
         log.info("POST /cart/product userId={} productId={} outletId={}", addProductRequest.getUserId(), addProductRequest.getProductId(), addProductRequest.getOutletId());
         return ResponseEntity.ok(cartService.addProductToCartForUser(addProductRequest));
     }

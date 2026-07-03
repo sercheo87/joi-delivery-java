@@ -3,6 +3,7 @@ package com.tw.joi.delivery.controller;
 import com.tw.joi.delivery.domain.Feedback;
 import com.tw.joi.delivery.dto.request.SubmitFeedbackRequest;
 import com.tw.joi.delivery.service.FeedbackService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -21,7 +22,7 @@ public class FeedbackController {
     private final FeedbackService feedbackService;
 
     @PostMapping
-    public ResponseEntity<Feedback> submitFeedback(@RequestBody SubmitFeedbackRequest request) {
+    public ResponseEntity<Feedback> submitFeedback(@Valid @RequestBody SubmitFeedbackRequest request) {
         log.info("POST /feedback userId={} orderId={} type={} rating={}", request.userId(), request.orderId(), request.type(), request.rating());
         Feedback feedback = feedbackService.submitFeedback(
             request.userId(), request.orderId(), request.type(), request.rating(), request.comment());

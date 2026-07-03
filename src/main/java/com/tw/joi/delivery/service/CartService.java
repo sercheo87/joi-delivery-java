@@ -48,6 +48,9 @@ public class CartService {
     }
 
     private Cart fetchCartForUser(User user) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
         return userCarts.get(user.getUserId());
     }
 }

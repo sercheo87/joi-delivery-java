@@ -4,6 +4,7 @@ import com.tw.joi.delivery.domain.Order;
 import com.tw.joi.delivery.dto.request.UpdateOrderStatusRequest;
 import com.tw.joi.delivery.dto.response.PlaceOrderResponse;
 import com.tw.joi.delivery.service.OrderService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -56,7 +57,7 @@ public class OrderController {
     public ResponseEntity<Order> updateOrderStatus(
         @PathVariable String orderId,
         @RequestParam(name = "userId") String userId,
-        @RequestBody UpdateOrderStatusRequest request
+        @Valid @RequestBody UpdateOrderStatusRequest request
     ) {
         log.info("PATCH /orders/{}/status userId={} newStatus={}", orderId, userId, request.status());
         return ResponseEntity.ok(orderService.updateOrderStatus(orderId, userId, request.status()));
