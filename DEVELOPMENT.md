@@ -19,7 +19,10 @@ flowchart TD
 
     G --> H[Place order\nPOST /orders/place\nStock reserved 🔒]
     H --> I[🔔 Notification: Order Confirmed]
-    I --> J[Choose payment method\nCredit Card / UPI / Cash on Delivery]
+    I --> CA{Cancel\norder?}
+    CA -- Yes --> CX[DELETE /orders/orderId\nStock released 🔓]
+    CX --> CZ([❌ Order Cancelled])
+    CA -- No --> J[Choose payment method\nCredit Card / UPI / Cash on Delivery]
     J --> K[Initiate payment\nPOST /payments/initiate\nheader: X-Idempotency-Key]
 
     K --> L{Payment\nsuccessful?}
@@ -43,11 +46,9 @@ flowchart TD
     Y --> FB
     FB --> Z([✅ Done])
 
-    C2 -- Cancel order --> CX[DELETE /orders/orderId\nStock released 🔓]
-    CX --> CZ([❌ Order Cancelled])
-
     style A fill:#4CAF50,color:#fff
     style Z fill:#4CAF50,color:#fff
+    style CA fill:#FF9800,color:#fff
     style CZ fill:#f44336,color:#fff
     style I fill:#2196F3,color:#fff
     style O fill:#2196F3,color:#fff
