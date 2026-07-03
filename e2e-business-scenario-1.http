@@ -1,0 +1,294 @@
+@baseUrl = http://localhost:8080
+@userId = user101
+@storeId = store101
+@productId = product101
+
+# E2E Business Scenario 1
+# Full happy path: browse -> cart -> order -> delivery -> payment -> refund -> feedback.
+# Run this file with a freshly started app so the in-memory SeedData matches
+# E2EBusinessFlowTest.resetState().
+
+### 01 - List products for store101
+# @name listProducts
+GET {{baseUrl}}/products?storeId={{storeId}}
+Accept: application/json
+
+> {%
+    client.test("01 list products returns 3 products", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(Array.isArray(response.body), "Expected response body to be an array");
+        client.assert(response.body.length === 3, "Expected exactly 3 products for store101");
+        client.assert(!!response.body[0].productId, "Expected first product to have productId");
+    });
+%}
+
+### 02 - Search product by name
+# @name searchProduct
+GET {{baseUrl}}/products/search?query=wheat
+Accept: application/json
+
+> {%
+    client.test("02 search returns Wheat Bread from store101", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(Array.isArray(response.body), "Expected response body to be an array");
+        client.assert(response.body[0].productName === "Wheat Bread", "Expected Wheat Bread");
+        client.assert(response.body[0].storeId === "store101", "Expected store101");
+    });
+%}
+
+### 03 - Get product detail
+# @name getProductDetail
+GET {{baseUrl}}/products/{{productId}}?storeId={{storeId}}
+Accept: application/json
+
+> {%
+    client.test("03 product detail matches seeded product", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.productId === "product101", "Expected product101");
+        client.assert(response.body.productName === "Wheat Bread", "Expected Wheat Bread");
+        client.assert(response.body.availableStock === 30, "Expected availableStock 30");
+    });
+%}
+
+### 04 - Add product to cart
+# @name addProductToCart
+POST {{baseUrl}}/cart/product
+Content-Type: application/json
+Accept: application/json
+
+{
+  "userId": "{{userId}}",
+  "productId": "{{productId}}",
+  "outletId": "{{storeId}}"
+}
+
+> {%
+    client.test("04 product is added to cart", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.cart.products[0].productId === "product101", "Expected product101 in cart");
+    });
+%}
+
+### 05 - View cart
+# @name viewCart
+GET {{baseUrl}}/cart/view?userId={{userId}}
+Accept: application/json
+
+> {%
+    client.test("05 cart has one product", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.products.length === 1, "Expected cart to contain exactly 1 product");
+        client.assert(response.body.products[0].productId === "product101", "Expected product101");
+    });
+%}
+
+### 06 - Place order
+# @name placeOrder
+POST {{baseUrl}}/orders/place?userId={{userId}}
+Accept: application/json
+
+> {%
+    client.test("06 order is confirmed", function () {
+        client.assert(response.status === 201, "Expected 201");
+        client.assert(!!response.body.orderId, "Expected orderId");
+        client.assert(response.body.status === "CONFIRMED", "Expected CONFIRMED");
+        client.assert(response.body.totalAmount !== null && response.body.totalAmount !== undefined, "Expected totalAmount");
+    });
+
+    client.global.set("orderId", response.body.orderId);
+    client.global.set("paymentIdempotencyKey", "e2e-pay-" + response.body.orderId);
+%}
+
+### 07 - Verify order confirmation notification
+# @name verifyOrderConfirmedNotification
+GET {{baseUrl}}/notifications?userId={{userId}}
+Accept: application/json
+
+> {%
+    client.test("07 order confirmed notification exists", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body[0].title === "Order Confirmed", "Expected Order Confirmed notification");
+        client.assert(response.body[0].read === false, "Expected unread notification");
+    });
+%}
+
+### 08a - Progress order to PREPARING
+# @name progressOrderPreparing
+PATCH {{baseUrl}}/orders/{{orderId}}/status?userId={{userId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "PREPARING"
+}
+
+> {%
+    client.test("08a order status is PREPARING", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.status === "PREPARING", "Expected PREPARING");
+    });
+%}
+
+### 08b - Progress order to OUT_FOR_DELIVERY
+# @name progressOrderOutForDelivery
+PATCH {{baseUrl}}/orders/{{orderId}}/status?userId={{userId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "OUT_FOR_DELIVERY"
+}
+
+> {%
+    client.test("08b order status is OUT_FOR_DELIVERY", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.status === "OUT_FOR_DELIVERY", "Expected OUT_FOR_DELIVERY");
+    });
+%}
+
+### 08c - Progress order to DELIVERED
+# @name progressOrderDelivered
+PATCH {{baseUrl}}/orders/{{orderId}}/status?userId={{userId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "status": "DELIVERED"
+}
+
+> {%
+    client.test("08c order status is DELIVERED", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.status === "DELIVERED", "Expected DELIVERED");
+    });
+%}
+
+### 09 - Verify tracking history
+# @name verifyTrackingHistory
+GET {{baseUrl}}/tracking/{{orderId}}
+Accept: application/json
+
+> {%
+    client.test("09 tracking history has 3 events", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(Array.isArray(response.body), "Expected response body to be an array");
+        client.assert(response.body.length === 3, "Expected 3 tracking events");
+    });
+%}
+
+### 10 - Verify latest tracking status
+# @name verifyLatestTrackingStatus
+GET {{baseUrl}}/tracking/{{orderId}}/status
+Accept: application/json
+
+> {%
+    client.test("10 latest tracking status is DELIVERED", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.status === "DELIVERED", "Expected DELIVERED");
+    });
+%}
+
+### 11 - Initiate payment
+# @name initiatePayment
+POST {{baseUrl}}/payments/initiate
+X-Idempotency-Key: {{paymentIdempotencyKey}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "orderId": "{{orderId}}",
+  "userId": "{{userId}}",
+  "method": "CASH_ON_DELIVERY"
+}
+
+> {%
+    client.test("11 cash on delivery payment succeeds", function () {
+        client.assert(response.status === 201, "Expected 201");
+        client.assert(response.body.status === "SUCCESS", "Expected SUCCESS");
+        client.assert(!!response.body.paymentId, "Expected paymentId");
+    });
+
+    client.global.set("paymentId", response.body.paymentId);
+%}
+
+### 12 - Retry same payment with same idempotency key
+# @name retrySamePayment
+POST {{baseUrl}}/payments/initiate
+X-Idempotency-Key: {{paymentIdempotencyKey}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "orderId": "{{orderId}}",
+  "userId": "{{userId}}",
+  "method": "CASH_ON_DELIVERY"
+}
+
+> {%
+    client.test("12 retry returns the same paymentId", function () {
+        client.assert(response.status === 201, "Expected 201");
+        client.assert(response.body.paymentId === client.global.get("paymentId"), "Expected same paymentId");
+    });
+%}
+
+### 13 - Verify payment successful notification
+# @name verifyPaymentSuccessfulNotification
+GET {{baseUrl}}/notifications?userId={{userId}}
+Accept: application/json
+
+> {%
+    client.test("13 payment successful notification exists", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.some(function (notification) {
+            return notification.title === "Payment Successful";
+        }), "Expected Payment Successful notification");
+    });
+%}
+
+### 14 - Refund payment
+# @name refundPayment
+POST {{baseUrl}}/payments/{{paymentId}}/refund?userId={{userId}}
+Accept: application/json
+
+> {%
+    client.test("14 payment is refunded", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.status === "REFUNDED", "Expected REFUNDED");
+    });
+%}
+
+### 15 - Verify payment refunded notification
+# @name verifyPaymentRefundedNotification
+GET {{baseUrl}}/notifications?userId={{userId}}
+Accept: application/json
+
+> {%
+    client.test("15 payment refunded notification exists", function () {
+        client.assert(response.status === 200, "Expected 200");
+        client.assert(response.body.some(function (notification) {
+            return notification.title === "Payment Refunded";
+        }), "Expected Payment Refunded notification");
+    });
+%}
+
+### 16 - Submit feedback
+# @name submitFeedback
+POST {{baseUrl}}/feedback
+Content-Type: application/json
+Accept: application/json
+
+{
+  "userId": "{{userId}}",
+  "orderId": "{{orderId}}",
+  "type": "ORDER",
+  "rating": 5,
+  "comment": "Great service!"
+}
+
+> {%
+    client.test("16 feedback is accepted", function () {
+        client.assert(response.status === 201, "Expected 201");
+        client.assert(response.body.rating === 5, "Expected rating 5");
+        client.assert(response.body.type === "ORDER", "Expected ORDER feedback type");
+    });
+%}

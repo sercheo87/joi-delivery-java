@@ -1,55 +1,40 @@
 package com.tw.joi.delivery.seedData;
 
-import com.tw.joi.delivery.domain.Cart;
-import com.tw.joi.delivery.domain.Feedback;
-import com.tw.joi.delivery.domain.GroceryProduct;
-import com.tw.joi.delivery.domain.GroceryStore;
-import com.tw.joi.delivery.domain.Notification;
-import com.tw.joi.delivery.domain.Order;
-import com.tw.joi.delivery.domain.Payment;
-import com.tw.joi.delivery.domain.TrackingEvent;
-import com.tw.joi.delivery.domain.User;
+import com.tw.joi.delivery.domain.*;
+import lombok.extern.slf4j.Slf4j;
+
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 public class SeedData {
 
+    public static final List<Order> orders = new ArrayList<>();
+    public static final List<TrackingEvent> trackingEvents = new ArrayList<>();
+    public static final List<Notification> notifications = new ArrayList<>();
+    public static final List<Payment> payments = new ArrayList<>();
+    public static final List<Feedback> feedbacks = new ArrayList<>();
+    public static final Map<String, Payment> idempotencyStore = new ConcurrentHashMap<>();
     public static GroceryStore store101 = SeedData.createStore("Fresh Picks", "store101");
     public static GroceryStore store102 = SeedData.createStore("Natural Choice", "store102");
-
-    public static User user101= SeedData.createUser("user101", "John", "Doe");
-
+    public static User user101 = SeedData.createUser("user101", "John", "Doe");
     public static Map<String, Cart> cartForUsers = Map.of(
         "user101", createCartForUser("user101", "John", "Doe", "cart101"),
         "user102", createCartForUser("user102", "Rachel", "Zane", "cart102"));
-
     public static List<GroceryProduct> groceryProducts =
         Arrays.asList(createGroceryProduct("Wheat Bread", "product101", store101),
-                      createGroceryProduct("Spinach", "product102", store101),
-                      createGroceryProduct("Crackers", "product103", store101),
-                      createGroceryProduct("Oats", "product104", store102),
-                      createGroceryProduct("Brown Rice", "product105", store102));
-
+            createGroceryProduct("Spinach", "product102", store101),
+            createGroceryProduct("Crackers", "product103", store101),
+            createGroceryProduct("Oats", "product104", store102),
+            createGroceryProduct("Brown Rice", "product105", store102));
     public static List<GroceryStore> groceryStores = Arrays.asList(store101, store102);
+    public static List<User> users = Collections.singletonList(user101);
 
-    public static List<User> users = Arrays.asList(user101);
-
-    public static final List<Order> orders = new ArrayList<>();
-
-    public static final List<TrackingEvent> trackingEvents = new ArrayList<>();
-
-    public static final List<Notification> notifications = new ArrayList<>();
-
-    public static final List<Payment> payments = new ArrayList<>();
-
-    public static final List<Feedback> feedbacks = new ArrayList<>();
-
-    public static final Map<String, Payment> idempotencyStore = new ConcurrentHashMap<>();
+    static {
+        log.info("SeedData initialized: stores={} products={} users={} carts={}",
+            groceryStores.size(), groceryProducts.size(), users.size(), cartForUsers.size());
+    }
 
     public static Cart createCartForUser(String userId, String firstName, String lastName,
                                          String cartId) {

@@ -5,5 +5,5 @@ import lombok.Setter;
 
 @Setter
 @Getter
-public class Restaurant extends Outlet{
+public class Restaurant extends Outlet {
 }

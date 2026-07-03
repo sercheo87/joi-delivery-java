@@ -15,5 +15,6 @@ public record InventoryHealthResponse(
         int availableStock,
         int threshold,
         String stockStatus
-    ) {}
+    ) {
+    }
 }

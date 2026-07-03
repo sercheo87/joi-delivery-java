@@ -1,11 +1,8 @@
 package com.tw.joi.delivery.domain;
 
+import lombok.*;
+
 import java.math.BigDecimal;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Getter
 @Setter
@@ -30,7 +27,7 @@ public class GroceryProduct extends Product {
     public GroceryProduct(String productId, String productName, BigDecimal mrp, Cart cart,
                           BigDecimal sellingPrice, BigDecimal weight, int expiryDate, int threshold,
                           int availableStock, GroceryStore store, BigDecimal discount) {
-        super(productId, productName,  mrp);
+        super(productId, productName, mrp);
         this.sellingPrice = sellingPrice;
         this.weight = weight;
         this.expiryDate = expiryDate;
