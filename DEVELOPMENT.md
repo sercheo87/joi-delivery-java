@@ -37,8 +37,9 @@ flowchart TD
     V --> W{Need a\nrefund?}
     W -- Yes --> X[Request refund\nPOST /payments/paymentId/refund]
     X --> Y[🔔 Notification: Payment Refunded]
-    W -- No --> Z([✅ Done])
-    Y --> Z
+    W -- No --> FB[Leave feedback & rating\nPOST /feedback]
+    Y --> FB
+    FB --> Z([✅ Done])
 
     style A fill:#4CAF50,color:#fff
     style Z fill:#4CAF50,color:#fff
@@ -114,6 +115,7 @@ C4Component
         Component(tc, "TrackingController", "/tracking", "View order tracking history and latest status")
         Component(paymC, "PaymentController", "/payments", "Initiate, query and refund payments")
         Component(nc, "NotificationController", "/notifications", "View, mark-read and count unread notifications")
+        Component(fc, "FeedbackController", "/feedback", "Submit ratings and comments, view feedback by user or order")
 
         Component(ps, "ProductService", "", "getProductsByStore, searchProducts, getProductDetail")
         Component(cs, "CartService", "", "addProductToCartForUser, getCartForUser")
@@ -122,10 +124,11 @@ C4Component
         Component(ts, "TrackingService", "", "getTrackingHistory, getLatestStatus")
         Component(pays, "PaymentService", "", "initiatePayment, getPaymentByOrder, refundPayment")
         Component(ns, "NotificationService", "", "getNotificationsForUser, markAsRead, getUnreadCount")
+        Component(fbs, "FeedbackService", "", "submitFeedback, getFeedbackByUser, getFeedbackByOrder, getAverageRating")
         Component(ss, "StoreService", "", "findById")
         Component(us, "UserService", "", "fetchUserById")
 
-        ComponentDb(seed, "SeedData", "", "Static in-memory collections: users, stores, products, carts, orders, payments, notifications, trackingEvents")
+        ComponentDb(seed, "SeedData", "", "Static in-memory collections: users, stores, products, carts, orders, payments, notifications, trackingEvents, feedbacks")
 
         Rel(pc, ps, "uses")
         Rel(cc, cs, "uses")
@@ -134,6 +137,7 @@ C4Component
         Rel(tc, ts, "uses")
         Rel(paymC, pays, "uses")
         Rel(nc, ns, "uses")
+        Rel(fc, fbs, "uses")
 
         Rel(ps, ss, "uses")
         Rel(is, ss, "uses")
@@ -147,6 +151,9 @@ C4Component
         Rel(pays, seed, "reads/writes payments")
         Rel(ts, seed, "reads orders, trackingEvents")
         Rel(ns, seed, "reads/writes notifications")
+        Rel(fbs, seed, "reads/writes feedbacks")
+        Rel(fbs, us, "validates user")
+        Rel(fbs, os, "validates order")
         Rel(ss, seed, "reads stores")
         Rel(us, seed, "reads users")
         Rel(ps, seed, "reads products")
@@ -179,6 +186,10 @@ C4Component
 | `GET` | `/notifications/unread-count?userId=` | Count unread notifications |
 | `PATCH` | `/notifications/{id}/read?userId=` | Mark notification as read |
 | `PATCH` | `/notifications/read-all?userId=` | Mark all notifications as read |
+| `POST` | `/feedback` | Submit a rating and comment |
+| `GET` | `/feedback/user?userId=` | Get all feedback submitted by a user |
+| `GET` | `/feedback/order/{orderId}` | Get all feedback for a specific order |
+| `GET` | `/feedback/store/{storeId}/rating` | Get average rating for a store |
 
 ---
 
@@ -288,6 +299,24 @@ classDiagram
         Set~GroceryProduct~ inventory
     }
 
+    class Feedback {
+        String feedbackId
+        String userId
+        String orderId
+        FeedbackType type
+        int rating
+        String comment
+        LocalDateTime submittedAt
+    }
+
+    class FeedbackType {
+        <<enumeration>>
+        ORDER
+        DELIVERY
+        PRODUCT
+        APP
+    }
+
     User "1" --> "1" Cart
     Cart "1" --> "*" Product
     Product <|-- GroceryProduct
@@ -299,6 +328,9 @@ classDiagram
     Payment --> PaymentMethod
     User "1" --> "*" Notification
     User "1" --> "*" Order
+    User "1" --> "*" Feedback
+    Order "1" --> "*" Feedback
+    Feedback --> FeedbackType
 ```
 
 ---
