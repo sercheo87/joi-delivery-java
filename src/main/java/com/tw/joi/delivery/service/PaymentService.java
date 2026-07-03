@@ -16,83 +16,88 @@ import java.util.UUID;
 public class PaymentService {
 
     public Payment initiatePayment(String orderId, String userId, PaymentMethod method, String idempotencyKey) {
-        Payment cached = SeedData.idempotencyStore.get(idempotencyKey);
-        if (cached != null) {
-            log.warn("Idempotency hit — returning cached result: key={} paymentId={} status={}", idempotencyKey, cached.getPaymentId(), cached.getStatus());
-            return cached;
-        }
+        boolean[] wasNew = {false};
 
-        Order order = SeedData.orders.stream()
-            .filter(o -> orderId.equals(o.getOrderId()))
-            .findFirst()
-            .orElseThrow(() -> {
-                log.warn("Payment rejected — order not found: orderId={}", orderId);
-                return new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
-            });
+        // computeIfAbsent is atomic: the lambda runs at most once per key even under concurrent calls
+        Payment result = SeedData.idempotencyStore.computeIfAbsent(idempotencyKey, key -> {
+            wasNew[0] = true;
 
-        if (!userId.equals(order.getUserId())) {
-            log.warn("Payment rejected — order does not belong to user: orderId={} requestedBy={} owner={}", orderId, userId, order.getUserId());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order does not belong to the user");
-        }
+            Order order = SeedData.orders.stream()
+                .filter(o -> orderId.equals(o.getOrderId()))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.warn("Payment rejected — order not found: orderId={}", orderId);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+                });
 
-        if (order.getStatus() == OrderStatus.CANCELLED) {
-            log.warn("Payment rejected — order is cancelled: orderId={}", orderId);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot pay for a cancelled order");
-        }
+            if (!userId.equals(order.getUserId())) {
+                log.warn("Payment rejected — order does not belong to user: orderId={} requestedBy={} owner={}", orderId, userId, order.getUserId());
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order does not belong to the user");
+            }
 
-        boolean alreadyPaid = SeedData.payments.stream()
-            .anyMatch(p -> orderId.equals(p.getOrderId()) && PaymentStatus.SUCCESS == p.getStatus());
+            if (order.getStatus() == OrderStatus.CANCELLED) {
+                log.warn("Payment rejected — order is cancelled: orderId={}", orderId);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot pay for a cancelled order");
+            }
 
-        if (alreadyPaid) {
-            log.warn("Payment rejected — order already paid: orderId={}", orderId);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order has already been paid");
-        }
+            boolean alreadyPaid = SeedData.payments.stream()
+                .anyMatch(p -> orderId.equals(p.getOrderId()) && PaymentStatus.SUCCESS == p.getStatus());
 
-        LocalDateTime now = LocalDateTime.now();
-        Payment payment = Payment.builder()
-            .paymentId(UUID.randomUUID().toString())
-            .orderId(orderId)
-            .userId(userId)
-            .amount(order.getTotalAmount())
-            .method(method)
-            .status(PaymentStatus.PENDING)
-            .initiatedAt(now)
-            .build();
+            if (alreadyPaid) {
+                log.warn("Payment rejected — order already paid: orderId={}", orderId);
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order has already been paid");
+            }
 
-        boolean success = method == PaymentMethod.CASH_ON_DELIVERY || orderId.hashCode() % 10 != 0;
-
-        if (success) {
-            payment.setStatus(PaymentStatus.SUCCESS);
-            payment.setCompletedAt(LocalDateTime.now());
-            SeedData.notifications.add(Notification.builder()
-                .notificationId(UUID.randomUUID().toString())
-                .userId(userId)
+            LocalDateTime now = LocalDateTime.now();
+            Payment payment = Payment.builder()
+                .paymentId(UUID.randomUUID().toString())
                 .orderId(orderId)
-                .title("Payment Successful")
-                .message("Your payment for order #" + orderId + " was successful.")
-                .read(false)
-                .createdAt(LocalDateTime.now())
-                .build());
-            log.info("Payment successful: paymentId={} orderId={} userId={} method={} amount={}", payment.getPaymentId(), orderId, userId, method, payment.getAmount());
-        } else {
-            payment.setStatus(PaymentStatus.FAILED);
-            payment.setCompletedAt(LocalDateTime.now());
-            payment.setFailureReason("Payment processing failed");
-            SeedData.notifications.add(Notification.builder()
-                .notificationId(UUID.randomUUID().toString())
                 .userId(userId)
-                .orderId(orderId)
-                .title("Payment Failed")
-                .message("Your payment for order #" + orderId + " has failed. Please try again.")
-                .read(false)
-                .createdAt(LocalDateTime.now())
-                .build());
-            log.warn("Payment failed: paymentId={} orderId={} userId={} method={} reason={}", payment.getPaymentId(), orderId, userId, method, payment.getFailureReason());
-        }
+                .amount(order.getTotalAmount())
+                .method(method)
+                .status(PaymentStatus.PENDING)
+                .initiatedAt(now)
+                .build();
 
-        SeedData.payments.add(payment);
-        SeedData.idempotencyStore.put(idempotencyKey, payment);
-        return payment;
+            boolean success = method == PaymentMethod.CASH_ON_DELIVERY || orderId.hashCode() % 10 != 0;
+
+            if (success) {
+                payment.setStatus(PaymentStatus.SUCCESS);
+                payment.setCompletedAt(LocalDateTime.now());
+                SeedData.notifications.add(Notification.builder()
+                    .notificationId(UUID.randomUUID().toString())
+                    .userId(userId)
+                    .orderId(orderId)
+                    .title("Payment Successful")
+                    .message("Your payment for order #" + orderId + " was successful.")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+                log.info("Payment successful: paymentId={} orderId={} userId={} method={} amount={}", payment.getPaymentId(), orderId, userId, method, payment.getAmount());
+            } else {
+                payment.setStatus(PaymentStatus.FAILED);
+                payment.setCompletedAt(LocalDateTime.now());
+                payment.setFailureReason("Payment processing failed");
+                SeedData.notifications.add(Notification.builder()
+                    .notificationId(UUID.randomUUID().toString())
+                    .userId(userId)
+                    .orderId(orderId)
+                    .title("Payment Failed")
+                    .message("Your payment for order #" + orderId + " has failed. Please try again.")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+                log.warn("Payment failed: paymentId={} orderId={} userId={} method={} reason={}", payment.getPaymentId(), orderId, userId, method, payment.getFailureReason());
+            }
+
+            SeedData.payments.add(payment);
+            return payment;
+        });
+
+        if (!wasNew[0]) {
+            log.warn("Idempotency hit — returning cached result: key={} paymentId={} status={}", idempotencyKey, result.getPaymentId(), result.getStatus());
+        }
+        return result;
     }
 
     public Payment getPaymentByOrder(String orderId, String userId) {

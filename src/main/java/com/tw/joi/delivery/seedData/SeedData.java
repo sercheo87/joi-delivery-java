@@ -19,9 +19,10 @@ public class SeedData {
     public static GroceryStore store101 = SeedData.createStore("Fresh Picks", "store101");
     public static GroceryStore store102 = SeedData.createStore("Natural Choice", "store102");
     public static User user101 = SeedData.createUser("user101", "John", "Doe");
+    public static User user102 = SeedData.createUser("user102", "Rachel", "Zane");
     public static Map<String, Cart> cartForUsers = Map.of(
-        "user101", createCartForUser("user101", "John", "Doe", "cart101"),
-        "user102", createCartForUser("user102", "Rachel", "Zane", "cart102"));
+        "user101", createCartForUser("cart101", user101),
+        "user102", createCartForUser("cart102", user102));
     public static List<GroceryProduct> groceryProducts =
         Arrays.asList(createGroceryProduct("Wheat Bread", "product101", store101),
             createGroceryProduct("Spinach", "product102", store101),
@@ -29,18 +30,18 @@ public class SeedData {
             createGroceryProduct("Oats", "product104", store102),
             createGroceryProduct("Brown Rice", "product105", store102));
     public static List<GroceryStore> groceryStores = Arrays.asList(store101, store102);
-    public static List<User> users = Collections.singletonList(user101);
+    public static List<User> users = Arrays.asList(user101, user102);
 
     static {
         log.info("SeedData initialized: stores={} products={} users={} carts={}",
             groceryStores.size(), groceryProducts.size(), users.size(), cartForUsers.size());
     }
 
-    public static Cart createCartForUser(String userId, String firstName, String lastName,      String cartId) {
+    public static Cart createCartForUser(String cartId, User user) {
         return Cart.builder()
             .cartId(cartId)
             .outlet(store101)
-            .user(user101)
+            .user(user)
             .build();
     }
 
