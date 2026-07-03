@@ -206,50 +206,66 @@ class E2EBusinessFlowTest {
             .andExpect(jsonPath("$.products[?(@.productId == 'product101')].stockStatus")
                            .value("OUT_OF_STOCK"));
 
-        // 3. Customer adds the (out-of-stock) product to cart
+        // 3. Customer tries to add the out-of-stock product to cart → 400 (stock reservation enforced)
         mockMvc.perform(MockMvcRequestBuilders.post("/cart/product")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"userId\":\"user101\",\"productId\":\"product101\",\"outletId\":\"store101\"}"))
+            .andExpect(status().isBadRequest());
+
+        // 4. No order was placed — order list is empty
+        mockMvc.perform(MockMvcRequestBuilders.get("/orders")
+                            .param("userId", "user101"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(0));
+
+        // 5. No notifications generated (nothing progressed past the cart)
+        mockMvc.perform(MockMvcRequestBuilders.get("/notifications/unread-count")
+                            .param("userId", "user101"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.unreadCount").value(0));
+
+        // 6. A different product (product102, Spinach) with stock still available can be added
+        mockMvc.perform(MockMvcRequestBuilders.post("/cart/product")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"userId\":\"user101\",\"productId\":\"product102\",\"outletId\":\"store101\"}"))
             .andExpect(status().isOk());
 
-        // 4. Place order — order is accepted but will be cancelled due to stock issue
+        // 7. Place order with available product — stock is reserved (decremented)
+        int stockBefore = SeedData.groceryProducts.stream()
+            .filter(p -> "product102".equals(p.getProductId())).findFirst().orElseThrow()
+            .getAvailableStock();
+
         MvcResult placeResult = mockMvc.perform(MockMvcRequestBuilders.post("/orders/place")
                             .param("userId", "user101"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value("CONFIRMED"))
             .andReturn();
 
-        JsonNode orderNode = objectMapper.readTree(placeResult.getResponse().getContentAsString());
-        String orderId = orderNode.get("orderId").asText();
+        String orderId = objectMapper.readTree(placeResult.getResponse().getContentAsString())
+            .get("orderId").asText();
 
-        // 5. Verify "Order Confirmed" notification was received
-        mockMvc.perform(MockMvcRequestBuilders.get("/notifications")
-                            .param("userId", "user101"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[?(@.title == 'Order Confirmed')]").exists());
+        int stockAfterOrder = SeedData.groceryProducts.stream()
+            .filter(p -> "product102".equals(p.getProductId())).findFirst().orElseThrow()
+            .getAvailableStock();
 
-        // 6. Operator cancels order due to stock unavailability
+        assertThat(stockAfterOrder).isEqualTo(stockBefore - 1);
+
+        // 8. Cancel order → stock is restored (compensating transaction)
         mockMvc.perform(MockMvcRequestBuilders.delete("/orders/{orderId}", orderId)
                             .param("userId", "user101"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-        // 7. Verify "Order Cancelled" notification was received
+        int stockAfterCancel = SeedData.groceryProducts.stream()
+            .filter(p -> "product102".equals(p.getProductId())).findFirst().orElseThrow()
+            .getAvailableStock();
+
+        assertThat(stockAfterCancel).isEqualTo(stockBefore);
+
+        // 9. "Order Cancelled" notification received
         mockMvc.perform(MockMvcRequestBuilders.get("/notifications")
                             .param("userId", "user101"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[?(@.title == 'Order Cancelled')]").exists());
-
-        // 8. Confirm order is CANCELLED in the order list
-        mockMvc.perform(MockMvcRequestBuilders.get("/orders")
-                            .param("userId", "user101"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].status").value("CANCELLED"));
-
-        // 9. Unread notifications count reflects both notifications (Order Confirmed + Cancelled)
-        mockMvc.perform(MockMvcRequestBuilders.get("/notifications/unread-count")
-                            .param("userId", "user101"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.unreadCount").value(2));
     }
 }

@@ -11,11 +11,13 @@ flowchart TD
     C -- No --> B
     C -- Yes --> D[Search by name\nGET /products/search?query=]
     D --> E[Add product to cart\nPOST /cart/product]
-    E --> F{Add more\nproducts?}
+    E --> EE{Stock\navailable?}
+    EE -- No → 400 --> B
+    EE -- Yes --> F{Add more\nproducts?}
     F -- Yes --> B
     F -- No --> G[Review cart\nGET /cart/view]
 
-    G --> H[Place order\nPOST /orders/place]
+    G --> H[Place order\nPOST /orders/place\nStock reserved 🔒]
     H --> I[🔔 Notification: Order Confirmed]
     I --> J[Choose payment method\nCredit Card / UPI / Cash on Delivery]
     J --> K[Initiate payment\nPOST /payments/initiate\nheader: X-Idempotency-Key]
@@ -41,8 +43,12 @@ flowchart TD
     Y --> FB
     FB --> Z([✅ Done])
 
+    C2 -- Cancel order --> CX[DELETE /orders/orderId\nStock released 🔓]
+    CX --> CZ([❌ Order Cancelled])
+
     style A fill:#4CAF50,color:#fff
     style Z fill:#4CAF50,color:#fff
+    style CZ fill:#f44336,color:#fff
     style I fill:#2196F3,color:#fff
     style O fill:#2196F3,color:#fff
     style Q fill:#2196F3,color:#fff
@@ -50,11 +56,14 @@ flowchart TD
     style V fill:#2196F3,color:#fff
     style Y fill:#2196F3,color:#fff
     style M fill:#f44336,color:#fff
+    style EE fill:#FF9800,color:#fff
 ```
 
 > **🔔 Notifications** are generated automatically at every key transition — the customer is always informed without having to poll for status.
 >
 > **🔑 Idempotency Key** — `POST /payments/initiate` requires a `X-Idempotency-Key` header. Retrying with the same key returns the cached result without creating a duplicate payment.
+>
+> **🔒 Inventory Reservation (Soft Reserve)** — `POST /orders/place` decrements `availableStock` for each product at order placement time. If the order is cancelled (`DELETE /orders/{id}`), the stock is restored (compensating transaction). This prevents two customers from purchasing the same last unit during concurrent checkouts.
 
 ---
 
@@ -166,6 +175,39 @@ C4Component
 ---
 
 ## Architectural Patterns
+
+### Inventory Reservation (Soft Reserve) — Stock protection during checkout
+
+`POST /orders/place` applies the **Inventory Reservation** pattern to prevent race conditions where two customers could purchase the same last unit concurrently.
+
+**How it works:**
+
+```
+Customer A                     Customer B                   availableStock
+     │                              │                             │
+     │── POST /cart/product ────────┼────────────────────────────►│ stock=1 → OK
+     │                              │── POST /cart/product ───────►│ stock=1 → OK
+     │── POST /orders/place ────────┼────────────────────────────►│ stock: 1→0 (reserved)
+     │                              │── POST /orders/place ───────►│ stock=0 → 400 BAD REQUEST
+     │                              │   "Product is out of stock"  │
+     │   [order placed, stock=0]    │                              │
+```
+
+**Reservation lifecycle:**
+
+```
+POST /orders/place      availableStock -= 1   (soft reserve)
+PATCH /orders/{id}/status → DELIVERED         (stock consumed, no change needed)
+DELETE /orders/{id}     availableStock += 1   (compensating transaction — release)
+```
+
+**Rules:**
+- Stock is validated at cart level: `availableStock == 0` → `400 Bad Request`
+- Stock is decremented atomically at order placement, not at payment
+- Payment failure does **not** release the reservation — the customer retries the payment for the same order; the stock stays held
+- Only `cancelOrder` releases the reservation (when the customer or operator decides to abandon the order)
+
+---
 
 ### Idempotency Key — Payment fault tolerance
 
@@ -373,12 +415,12 @@ classDiagram
 
 ```mermaid
 stateDiagram-v2
-    [*] --> CONFIRMED : POST /orders/place
+    [*] --> CONFIRMED : POST /orders/place\n(stock reserved 🔒)
     CONFIRMED --> PREPARING : PATCH /orders/{id}/status
     PREPARING --> OUT_FOR_DELIVERY : PATCH /orders/{id}/status
     OUT_FOR_DELIVERY --> DELIVERED : PATCH /orders/{id}/status
-    CONFIRMED --> CANCELLED : DELETE /orders/{id}
-    PREPARING --> CANCELLED : DELETE /orders/{id}
+    CONFIRMED --> CANCELLED : DELETE /orders/{id}\n(stock released 🔓)
+    PREPARING --> CANCELLED : DELETE /orders/{id}\n(stock released 🔓)
 ```
 
 ---

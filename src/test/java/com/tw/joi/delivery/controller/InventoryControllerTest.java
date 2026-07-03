@@ -5,6 +5,8 @@ import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.tw.joi.delivery.seedData.SeedData;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +22,11 @@ class InventoryControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @BeforeEach
+    void resetStock() {
+        SeedData.groceryProducts.forEach(p -> p.setAvailableStock(30));
+    }
 
     @Test
     @DisplayName("Given a store id, when inventory health is requested, then the endpoint responds with store inventory details")

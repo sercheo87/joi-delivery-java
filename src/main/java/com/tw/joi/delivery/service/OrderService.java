@@ -1,6 +1,7 @@
 package com.tw.joi.delivery.service;
 
 import com.tw.joi.delivery.domain.Cart;
+import com.tw.joi.delivery.domain.GroceryProduct;
 import com.tw.joi.delivery.domain.Notification;
 import com.tw.joi.delivery.domain.Order;
 import com.tw.joi.delivery.domain.OrderStatus;
@@ -47,6 +48,12 @@ public class OrderService {
             .build();
 
         SeedData.orders.add(order);
+
+        // Reserve stock: decrement availableStock for each product
+        order.getProducts().forEach(p -> {
+            if (p instanceof GroceryProduct gp) gp.setAvailableStock(gp.getAvailableStock() - 1);
+        });
+
         cart.setProducts(new ArrayList<>());
 
         Notification confirmation = Notification.builder()
@@ -84,6 +91,11 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
+
+        // Release reserved stock (compensating transaction)
+        order.getProducts().forEach(p -> {
+            if (p instanceof GroceryProduct gp) gp.setAvailableStock(gp.getAvailableStock() + 1);
+        });
 
         SeedData.notifications.add(Notification.builder()
             .notificationId(UUID.randomUUID().toString())

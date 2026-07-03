@@ -79,6 +79,28 @@ class OrderServiceTest {
     }
 
     @Test
+    void shouldDecrementStockWhenOrderIsPlaced() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        int stockBefore = product.getAvailableStock();
+
+        orderService.placeOrder("user101");
+
+        assertThat(product.getAvailableStock()).isEqualTo(stockBefore - 1);
+    }
+
+    @Test
+    void shouldRestoreStockWhenOrderIsCancelled() {
+        when(cartService.getCartForUser("user101")).thenReturn(cart);
+        int stockBefore = product.getAvailableStock();
+
+        Order placed = orderService.placeOrder("user101");
+        assertThat(product.getAvailableStock()).isEqualTo(stockBefore - 1);
+
+        orderService.cancelOrder(placed.getOrderId(), "user101");
+        assertThat(product.getAvailableStock()).isEqualTo(stockBefore);
+    }
+
+    @Test
     void shouldClearCartAfterPlacingOrder() {
         when(cartService.getCartForUser("user101")).thenReturn(cart);
 

@@ -8,7 +8,9 @@ import com.tw.joi.delivery.dto.response.CartProductInfo;
 import com.tw.joi.delivery.seedData.SeedData;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +25,12 @@ public class CartService {
         Cart cart = fetchCartForUser(user);
         GroceryProduct product = productService.getProduct(addProductRequest.getProductId(),
                                                            addProductRequest.getOutletId());
+        if (product == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found");
+        }
+        if (product.getAvailableStock() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product is out of stock");
+        }
         cart.getProducts().add(product);
         return new CartProductInfo(cart, product, product.getSellingPrice());
     }
