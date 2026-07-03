@@ -2,17 +2,15 @@ package com.tw.joi.delivery.controller;
 
 import com.tw.joi.delivery.domain.Notification;
 import com.tw.joi.delivery.service.NotificationService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("/notifications")
 @RequiredArgsConstructor
@@ -24,6 +22,7 @@ public class NotificationController {
     public ResponseEntity<List<Notification>> getNotificationsForUser(
         @RequestParam(name = "userId") String userId
     ) {
+        log.debug("GET /notifications userId={}", userId);
         return ResponseEntity.ok(notificationService.getNotificationsForUser(userId));
     }
 
@@ -31,6 +30,7 @@ public class NotificationController {
     public ResponseEntity<Map<String, Long>> getUnreadCount(
         @RequestParam(name = "userId") String userId
     ) {
+        log.debug("GET /notifications/unread-count userId={}", userId);
         return ResponseEntity.ok(notificationService.getUnreadCount(userId));
     }
 
@@ -39,6 +39,7 @@ public class NotificationController {
         @PathVariable String notificationId,
         @RequestParam(name = "userId") String userId
     ) {
+        log.info("PATCH /notifications/{}/read userId={}", notificationId, userId);
         return ResponseEntity.ok(notificationService.markAsRead(notificationId, userId));
     }
 
@@ -46,7 +47,7 @@ public class NotificationController {
     public ResponseEntity<List<Notification>> markAllAsRead(
         @RequestParam(name = "userId") String userId
     ) {
+        log.info("PATCH /notifications/read-all userId={}", userId);
         return ResponseEntity.ok(notificationService.markAllAsRead(userId));
     }
-
 }

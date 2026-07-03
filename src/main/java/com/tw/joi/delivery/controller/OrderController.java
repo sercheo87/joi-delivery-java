@@ -4,20 +4,15 @@ import com.tw.joi.delivery.domain.Order;
 import com.tw.joi.delivery.dto.request.UpdateOrderStatusRequest;
 import com.tw.joi.delivery.dto.response.PlaceOrderResponse;
 import com.tw.joi.delivery.service.OrderService;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
+@Slf4j
 @RestController
 @RequestMapping("/orders")
 @RequiredArgsConstructor
@@ -27,6 +22,7 @@ public class OrderController {
 
     @PostMapping("/place")
     public ResponseEntity<PlaceOrderResponse> placeOrder(@RequestParam(name = "userId") String userId) {
+        log.info("POST /orders/place userId={}", userId);
         Order order = orderService.placeOrder(userId);
         PlaceOrderResponse response = new PlaceOrderResponse(
             order.getOrderId(),
@@ -43,6 +39,7 @@ public class OrderController {
 
     @GetMapping
     public ResponseEntity<List<Order>> getOrdersByUser(@RequestParam(name = "userId") String userId) {
+        log.info("GET /orders userId={}", userId);
         return ResponseEntity.ok(orderService.getOrdersByUser(userId));
     }
 
@@ -51,6 +48,7 @@ public class OrderController {
         @PathVariable String orderId,
         @RequestParam(name = "userId") String userId
     ) {
+        log.info("DELETE /orders/{} userId={}", orderId, userId);
         return ResponseEntity.ok(orderService.cancelOrder(orderId, userId));
     }
 
@@ -60,6 +58,7 @@ public class OrderController {
         @RequestParam(name = "userId") String userId,
         @RequestBody UpdateOrderStatusRequest request
     ) {
+        log.info("PATCH /orders/{}/status userId={} newStatus={}", orderId, userId, request.status());
         return ResponseEntity.ok(orderService.updateOrderStatus(orderId, userId, request.status()));
     }
 }
