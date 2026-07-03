@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,8 +23,10 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @PostMapping("/initiate")
-    public ResponseEntity<Payment> initiatePayment(@RequestBody InitiatePaymentRequest request) {
-        Payment payment = paymentService.initiatePayment(request.orderId(), request.userId(), request.method());
+    public ResponseEntity<Payment> initiatePayment(
+            @RequestHeader("X-Idempotency-Key") String idempotencyKey,
+            @RequestBody InitiatePaymentRequest request) {
+        Payment payment = paymentService.initiatePayment(request.orderId(), request.userId(), request.method(), idempotencyKey);
         return ResponseEntity.status(HttpStatus.CREATED).body(payment);
     }
 

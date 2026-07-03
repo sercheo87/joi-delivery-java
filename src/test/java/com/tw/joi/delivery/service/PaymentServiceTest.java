@@ -31,6 +31,7 @@ class PaymentServiceTest {
         SeedData.orders.clear();
         SeedData.payments.clear();
         SeedData.notifications.clear();
+        SeedData.idempotencyStore.clear();
 
         paymentService = new PaymentService();
     }
@@ -55,7 +56,7 @@ class PaymentServiceTest {
         Order order = buildOrder("order-cod", "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment payment = paymentService.initiatePayment("order-cod", "user101", PaymentMethod.CASH_ON_DELIVERY);
+        Payment payment = paymentService.initiatePayment("order-cod", "user101", PaymentMethod.CASH_ON_DELIVERY, "key-cod");
 
         assertThat(payment).isNotNull();
         assertThat(payment.getPaymentId()).isNotNull();
@@ -74,7 +75,7 @@ class PaymentServiceTest {
         Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD);
+        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD, "key-success");
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCESS);
         assertThat(payment.getCompletedAt()).isNotNull();
@@ -86,7 +87,7 @@ class PaymentServiceTest {
         Order order = buildOrder(FAIL_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment payment = paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD);
+        Payment payment = paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD, "key-fail");
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(payment.getCompletedAt()).isNotNull();
@@ -98,7 +99,7 @@ class PaymentServiceTest {
         Order order = buildOrder(FAIL_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment payment = paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.UPI);
+        Payment payment = paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.UPI, "key-fail-upi");
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(payment.getFailureReason()).isNotBlank();
@@ -109,7 +110,7 @@ class PaymentServiceTest {
         Order order = buildOrder("order-cod", "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        paymentService.initiatePayment("order-cod", "user101", PaymentMethod.CASH_ON_DELIVERY);
+        paymentService.initiatePayment("order-cod", "user101", PaymentMethod.CASH_ON_DELIVERY, "key-cod");
 
         assertThat(SeedData.payments).hasSize(1);
     }
@@ -119,7 +120,7 @@ class PaymentServiceTest {
         Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD);
+        paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD, "key-success");
 
         assertThat(SeedData.notifications).hasSize(1);
         Notification notification = SeedData.notifications.get(0);
@@ -134,7 +135,7 @@ class PaymentServiceTest {
         Order order = buildOrder(FAIL_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.DEBIT_CARD);
+        paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.DEBIT_CARD, "key-fail-debit");
 
         assertThat(SeedData.notifications).hasSize(1);
         Notification notification = SeedData.notifications.get(0);
@@ -145,7 +146,7 @@ class PaymentServiceTest {
     @Test
     void shouldThrow404WhenOrderNotFound() {
         assertThatThrownBy(() ->
-            paymentService.initiatePayment("order-nonexistent", "user101", PaymentMethod.CASH_ON_DELIVERY))
+            paymentService.initiatePayment("order-nonexistent", "user101", PaymentMethod.CASH_ON_DELIVERY, "key-404"))
             .isInstanceOf(ResponseStatusException.class)
             .hasMessageContaining("Order not found");
     }
@@ -156,7 +157,7 @@ class PaymentServiceTest {
         SeedData.orders.add(order);
 
         assertThatThrownBy(() ->
-            paymentService.initiatePayment("order-cod", "user999", PaymentMethod.CASH_ON_DELIVERY))
+            paymentService.initiatePayment("order-cod", "user999", PaymentMethod.CASH_ON_DELIVERY, "key-403"))
             .isInstanceOf(ResponseStatusException.class)
             .hasMessageContaining("Order does not belong to the user");
     }
@@ -167,7 +168,7 @@ class PaymentServiceTest {
         SeedData.orders.add(order);
 
         assertThatThrownBy(() ->
-            paymentService.initiatePayment("order-cod", "user101", PaymentMethod.CASH_ON_DELIVERY))
+            paymentService.initiatePayment("order-cod", "user101", PaymentMethod.CASH_ON_DELIVERY, "key-cod"))
             .isInstanceOf(ResponseStatusException.class)
             .hasMessageContaining("Cannot pay for a cancelled order");
     }
@@ -177,10 +178,10 @@ class PaymentServiceTest {
         Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD);
+        paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD, "key-success");
 
         assertThatThrownBy(() ->
-            paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.DEBIT_CARD))
+            paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.DEBIT_CARD, "key-success-2"))
             .isInstanceOf(ResponseStatusException.class)
             .hasMessageContaining("Order has already been paid");
     }
@@ -192,7 +193,7 @@ class PaymentServiceTest {
         Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY);
+        paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY, "key-get");
 
         Payment retrieved = paymentService.getPaymentByOrder(SUCCESS_ORDER_ID, "user101");
 
@@ -206,7 +207,7 @@ class PaymentServiceTest {
         Order order = buildOrder(FAIL_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment first = paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD);
+        Payment first = paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD, "key-fail");
 
         Payment second = Payment.builder()
             .paymentId("payment-second")
@@ -238,7 +239,7 @@ class PaymentServiceTest {
         Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY);
+        paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY, "key-403-get");
 
         assertThatThrownBy(() ->
             paymentService.getPaymentByOrder(SUCCESS_ORDER_ID, "user999"))
@@ -253,7 +254,7 @@ class PaymentServiceTest {
         Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY);
+        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY, "key-refund");
 
         Payment refunded = paymentService.refundPayment(payment.getPaymentId(), "user101");
 
@@ -266,7 +267,7 @@ class PaymentServiceTest {
         Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY);
+        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY, "key-refund-notif");
         SeedData.notifications.clear();
 
         paymentService.refundPayment(payment.getPaymentId(), "user101");
@@ -289,7 +290,7 @@ class PaymentServiceTest {
         Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY);
+        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY, "key-403-refund");
 
         assertThatThrownBy(() ->
             paymentService.refundPayment(payment.getPaymentId(), "user999"))
@@ -302,7 +303,7 @@ class PaymentServiceTest {
         Order order = buildOrder(FAIL_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment payment = paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD);
+        Payment payment = paymentService.initiatePayment(FAIL_ORDER_ID, "user101", PaymentMethod.CREDIT_CARD, "key-fail");
 
         assertThatThrownBy(() ->
             paymentService.refundPayment(payment.getPaymentId(), "user101"))
@@ -310,12 +311,40 @@ class PaymentServiceTest {
             .hasMessageContaining("Only successful payments can be refunded");
     }
 
+    // ── idempotency ──────────────────────────────────────────────────────────
+
+    @Test
+    void shouldReturnSamePaymentWhenIdempotencyKeyIsReused() {
+        Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
+        SeedData.orders.add(order);
+
+        Payment first = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY, "key-idem");
+        Payment second = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY, "key-idem");
+
+        assertThat(second.getPaymentId()).isEqualTo(first.getPaymentId());
+        assertThat(SeedData.payments).hasSize(1);
+    }
+
+    @Test
+    void shouldCreateNewPaymentForDifferentIdempotencyKey() {
+        Order order1 = buildOrder("order-a", "user101", OrderStatus.CONFIRMED);
+        Order order2 = buildOrder("order-b", "user101", OrderStatus.CONFIRMED);
+        SeedData.orders.add(order1);
+        SeedData.orders.add(order2);
+
+        Payment first = paymentService.initiatePayment("order-a", "user101", PaymentMethod.CASH_ON_DELIVERY, "key-a");
+        Payment second = paymentService.initiatePayment("order-b", "user101", PaymentMethod.CASH_ON_DELIVERY, "key-b");
+
+        assertThat(second.getPaymentId()).isNotEqualTo(first.getPaymentId());
+        assertThat(SeedData.payments).hasSize(2);
+    }
+
     @Test
     void shouldThrow400WhenRefundingAlreadyRefundedPayment() {
         Order order = buildOrder(SUCCESS_ORDER_ID, "user101", OrderStatus.CONFIRMED);
         SeedData.orders.add(order);
 
-        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY);
+        Payment payment = paymentService.initiatePayment(SUCCESS_ORDER_ID, "user101", PaymentMethod.CASH_ON_DELIVERY, "key-double-refund");
         paymentService.refundPayment(payment.getPaymentId(), "user101");
 
         assertThatThrownBy(() ->

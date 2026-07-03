@@ -1,5 +1,6 @@
 package com.tw.joi.delivery.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -39,6 +40,7 @@ class PaymentControllerTest {
         SeedData.orders.clear();
         SeedData.payments.clear();
         SeedData.notifications.clear();
+        SeedData.idempotencyStore.clear();
 
         Cart cart = SeedData.cartForUsers.get("user101");
         cart.setProducts(new ArrayList<>(SeedData.groceryProducts.subList(0, 1)));
@@ -66,6 +68,7 @@ class PaymentControllerTest {
         createConfirmedOrder("order-cod");
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"order-cod\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isCreated())
@@ -84,6 +87,7 @@ class PaymentControllerTest {
         createConfirmedOrder(SUCCESS_ORDER_ID);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + SUCCESS_ORDER_ID + "\",\"userId\":\"user101\",\"method\":\"CREDIT_CARD\"}"))
             .andExpect(status().isCreated())
@@ -95,6 +99,7 @@ class PaymentControllerTest {
         createConfirmedOrder(FAIL_ORDER_ID);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + FAIL_ORDER_ID + "\",\"userId\":\"user101\",\"method\":\"CREDIT_CARD\"}"))
             .andExpect(status().isCreated())
@@ -105,6 +110,7 @@ class PaymentControllerTest {
     @Test
     void shouldReturn404WhenOrderNotFoundForPayment() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"order-nonexistent\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isNotFound());
@@ -115,6 +121,7 @@ class PaymentControllerTest {
         createConfirmedOrder("order-cod");
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"order-cod\",\"userId\":\"user999\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isForbidden());
@@ -126,6 +133,7 @@ class PaymentControllerTest {
         order.setStatus(OrderStatus.CANCELLED);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"order-cod\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isBadRequest());
@@ -136,11 +144,13 @@ class PaymentControllerTest {
         createConfirmedOrder(SUCCESS_ORDER_ID);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + SUCCESS_ORDER_ID + "\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isCreated());
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + SUCCESS_ORDER_ID + "\",\"userId\":\"user101\",\"method\":\"DEBIT_CARD\"}"))
             .andExpect(status().isBadRequest());
@@ -153,6 +163,7 @@ class PaymentControllerTest {
         createConfirmedOrder(SUCCESS_ORDER_ID);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + SUCCESS_ORDER_ID + "\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isCreated());
@@ -177,6 +188,7 @@ class PaymentControllerTest {
         createConfirmedOrder(SUCCESS_ORDER_ID);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + SUCCESS_ORDER_ID + "\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isCreated());
@@ -193,6 +205,7 @@ class PaymentControllerTest {
         createConfirmedOrder(SUCCESS_ORDER_ID);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + SUCCESS_ORDER_ID + "\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isCreated());
@@ -218,6 +231,7 @@ class PaymentControllerTest {
         createConfirmedOrder(SUCCESS_ORDER_ID);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + SUCCESS_ORDER_ID + "\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isCreated());
@@ -234,6 +248,7 @@ class PaymentControllerTest {
         createConfirmedOrder(FAIL_ORDER_ID);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + FAIL_ORDER_ID + "\",\"userId\":\"user101\",\"method\":\"CREDIT_CARD\"}"))
             .andExpect(status().isCreated())
@@ -247,6 +262,30 @@ class PaymentControllerTest {
     }
 
     @Test
+    void shouldReturnSamePaymentIdWhenIdempotencyKeyReused() throws Exception {
+        createConfirmedOrder("order-idem");
+        String idempotencyKey = "fixed-key-123";
+        String body = "{\"orderId\":\"order-idem\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}";
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", idempotencyKey)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+            .andExpect(status().isCreated());
+
+        String firstPaymentId = SeedData.payments.get(0).getPaymentId();
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", idempotencyKey)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.paymentId").value(firstPaymentId));
+
+        assertThat(SeedData.payments).hasSize(1);
+    }
+
+    @Test
     void shouldInitiatePaymentViaPlaceOrder() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.post("/orders/place")
                             .param("userId", "user101")
@@ -256,6 +295,7 @@ class PaymentControllerTest {
         String orderId = SeedData.orders.get(0).getOrderId();
 
         mockMvc.perform(MockMvcRequestBuilders.post("/payments/initiate")
+                            .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"orderId\":\"" + orderId + "\",\"userId\":\"user101\",\"method\":\"CASH_ON_DELIVERY\"}"))
             .andExpect(status().isCreated())
