@@ -31,6 +31,7 @@ Sample user profiles are available in the repository to support development and 
 | UserId   | FirstName | LastName|
 |----------|-----------|---------|
 | user101  | John      | Doe     |
+| user102  | Rachel    | Zane    |
 
 ### Stores
 Sample store data seeded for development purposes only.

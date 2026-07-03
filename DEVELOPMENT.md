@@ -60,7 +60,7 @@ flowchart TD
     style EE fill:#FF9800,color:#fff
 ```
 
-> **🔔 Notifications** are generated automatically at every key transition — the customer is always informed without having to poll for status.
+> **🔔 Notifications** are generated automatically at every key transition — the customer is always informed without polling. Subscribe to `GET /notifications/stream?userId=` for real-time push via Server-Sent Events (SSE); fall back to `GET /notifications` for polling.
 >
 > **🔑 Idempotency Key** — `POST /payments/initiate` requires a `X-Idempotency-Key` header. Retrying with the same key returns the cached result without creating a duplicate payment.
 >
@@ -83,9 +83,9 @@ C4Context
     Person(customer, "Customer", "Places orders, tracks deliveries, manages payments")
     Person(vendor, "Store / Vendor", "Manages inventory and order status")
 
-    System(joi, "JOI Delivery API", "Spring Boot REST API. Handles products, cart, orders, tracking, payments and notifications.")
+    System(joi, "JOI Delivery API", "Spring Boot REST API. Handles products, cart, orders, tracking, payments, notifications and real-time SSE push.")
 
-    Rel(customer, joi, "Uses", "HTTP/REST")
+    Rel(customer, joi, "Uses", "HTTP/REST + SSE")
     Rel(vendor, joi, "Updates order status", "HTTP/REST")
 ```
 
@@ -101,11 +101,12 @@ C4Container
     Person(vendor, "Vendor")
 
     Container_Boundary(api, "JOI Delivery API") {
-        Container(app, "Spring Boot App", "Java 25 / Spring Boot 3.5.3", "Exposes REST endpoints on port 8080")
+        Container(app, "Spring Boot App", "Java 25 / Spring Boot 3.5.3", "Exposes REST endpoints on port 8080 and SSE stream on /notifications/stream")
         ContainerDb(mem, "In-Memory Store", "SeedData.java", "Static lists for users, stores, products, carts, orders, payments, notifications, tracking events")
     }
 
     Rel(customer, app, "HTTP REST", "JSON")
+    Rel(customer, app, "SSE stream", "text/event-stream")
     Rel(vendor, app, "HTTP REST", "JSON")
     Rel(app, mem, "Reads / writes")
 ```
@@ -126,7 +127,7 @@ C4Component
         Component(oc, "OrderController", "/orders", "Place, list, cancel and update order status")
         Component(tc, "TrackingController", "/tracking", "View order tracking history and latest status")
         Component(paymC, "PaymentController", "/payments", "Initiate, query and refund payments")
-        Component(nc, "NotificationController", "/notifications", "View, mark-read and count unread notifications")
+        Component(nc, "NotificationController", "/notifications", "View, mark-read, count unread notifications and subscribe to SSE stream")
         Component(fc, "FeedbackController", "/feedback", "Submit ratings and comments, view feedback by user or order")
 
         Component(ps, "ProductService", "", "getProductsByStore, searchProducts, getProductDetail")
@@ -136,6 +137,7 @@ C4Component
         Component(ts, "TrackingService", "", "getTrackingHistory, getLatestStatus")
         Component(pays, "PaymentService", "", "initiatePayment, getPaymentByOrder, refundPayment")
         Component(ns, "NotificationService", "", "getNotificationsForUser, markAsRead, getUnreadCount")
+        Component(sse, "SseNotificationService", "", "subscribe(userId), @EventListener onNotification — pushes events to open SSE connections")
         Component(fbs, "FeedbackService", "", "submitFeedback, getFeedbackByUser, getFeedbackByOrder, getAverageRating")
         Component(ss, "StoreService", "", "findById")
         Component(us, "UserService", "", "fetchUserById")
@@ -149,6 +151,7 @@ C4Component
         Rel(tc, ts, "uses")
         Rel(paymC, pays, "uses")
         Rel(nc, ns, "uses")
+        Rel(nc, sse, "uses")
         Rel(fc, fbs, "uses")
 
         Rel(ps, ss, "uses")
@@ -156,10 +159,12 @@ C4Component
         Rel(is, ps, "uses")
         Rel(cs, us, "uses")
         Rel(os, cs, "uses")
+        Rel(os, sse, "publishes NotificationEvent")
+        Rel(pays, sse, "publishes NotificationEvent")
         Rel(os, ns, "creates notifications")
         Rel(os, seed, "reads/writes orders, trackingEvents")
         Rel(pays, os, "reads orders")
-        Rel(pays, ns, "creates notifications")
+        Rel(pays, ns, "creates notifications (via publishNotification)")
         Rel(pays, seed, "reads/writes payments")
         Rel(ts, seed, "reads orders, trackingEvents")
         Rel(ns, seed, "reads/writes notifications")
@@ -244,6 +249,43 @@ sequenceDiagram
 
 ---
 
+### Real-Time Notifications — Server-Sent Events (SSE)
+
+`GET /notifications/stream?userId=` opens a persistent SSE connection. Every time the server generates a notification (order confirmed, payment result, status change, refund), it is **pushed immediately** to any subscribed client without polling.
+
+**How it works:**
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant NC as NotificationController
+    participant SSE as SseNotificationService
+    participant OS as OrderService / PaymentService
+    participant EP as ApplicationEventPublisher
+
+    Note over C,EP: Subscribe
+    C->>NC: GET /notifications/stream?userId=user101
+    NC->>SSE: subscribe("user101")
+    SSE-->>NC: SseEmitter (open connection)
+    NC-->>C: 200 text/event-stream (connection held open)
+
+    Note over C,EP: Event triggered by a business action
+    C->>OS: POST /orders/place?userId=user101
+    OS->>OS: publishNotification(confirmation)
+    OS->>EP: publishEvent(NotificationEvent)
+    EP->>SSE: onNotification(event) [@EventListener]
+    SSE->>C: event: notification\ndata: {"title":"Order Confirmed",...}
+```
+
+**Rules:**
+- One open SSE connection per `userId` — a new subscription replaces the previous one
+- If no SSE connection is open for a user, the notification is still persisted in `SeedData.notifications` and available via `GET /notifications`
+- Connection closes automatically on client disconnect (completion, timeout, or network error) — the emitter is removed from the registry
+- `ApplicationEventPublisher` is Spring's built-in in-process event bus — no external broker required
+- `SseNotificationService` holds a `ConcurrentHashMap<String, SseEmitter>` of active connections, safe for concurrent access
+
+---
+
 ## API Endpoints
 
 | Method   | Path                                   | Description                                                |
@@ -265,6 +307,7 @@ sequenceDiagram
 | `POST`   | `/payments/{paymentId}/refund?userId=` | Refund a payment                                           |
 | `GET`    | `/notifications?userId=`               | List notifications                                         |
 | `GET`    | `/notifications/unread-count?userId=`  | Count unread notifications                                 |
+| `GET`    | `/notifications/stream?userId=`        | **SSE** — real-time push stream (`text/event-stream`)      |
 | `PATCH`  | `/notifications/{id}/read?userId=`     | Mark notification as read                                  |
 | `PATCH`  | `/notifications/read-all?userId=`      | Mark all notifications as read                             |
 | `POST`   | `/feedback`                            | Submit a rating and comment                                |
@@ -447,6 +490,7 @@ stateDiagram-v2
 | Entity | Id | Detail |
 |--------|----|--------|
 | User | `user101` | John Doe — john.doe@gmail.com |
+| User | `user102` | Rachel Zane — rachel.zane@gmail.com |
 | Store | `store101` | Fresh Picks |
 | Store | `store102` | Natural Choice |
 | Product | `product101` | Wheat Bread — store101 |

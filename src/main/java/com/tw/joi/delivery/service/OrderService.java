@@ -1,9 +1,12 @@
 package com.tw.joi.delivery.service;
 
 import com.tw.joi.delivery.domain.*;
+import com.tw.joi.delivery.event.NotificationEvent;
 import com.tw.joi.delivery.seedData.SeedData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -45,6 +48,9 @@ public class OrderService {
         OrderStatus.CANCELLED, "Your order #%s has been cancelled."
     );
     private final CartService cartService;
+
+    @Autowired(required = false)
+    private ApplicationEventPublisher eventPublisher;
 
     public Order placeOrder(String userId) {
         Cart cart = cartService.getCartForUser(userId);
@@ -95,7 +101,7 @@ public class OrderService {
             .read(false)
             .createdAt(LocalDateTime.now())
             .build();
-        SeedData.notifications.add(confirmation);
+        publishNotification(confirmation);
 
         log.info("Order placed: orderId={} userId={} outletId={} totalAmount={} items={}", order.getOrderId(), userId, order.getOutletId(), totalAmount, order.getProducts().size());
         return order;
@@ -139,7 +145,7 @@ public class OrderService {
             }
         });
 
-        SeedData.notifications.add(Notification.builder()
+        publishNotification(Notification.builder()
             .notificationId(UUID.randomUUID().toString())
             .userId(order.getUserId())
             .orderId(orderId)
@@ -202,9 +208,16 @@ public class OrderService {
             .read(false)
             .createdAt(LocalDateTime.now())
             .build();
-        SeedData.notifications.add(notification);
+        publishNotification(notification);
 
         log.info("Order status updated: orderId={} {}→{} userId={}", orderId, previousStatus, newStatus, userId);
         return order;
+    }
+
+    private void publishNotification(Notification notification) {
+        SeedData.notifications.add(notification);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new NotificationEvent(notification));
+        }
     }
 }

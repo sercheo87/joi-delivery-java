@@ -1,8 +1,11 @@
 package com.tw.joi.delivery.service;
 
 import com.tw.joi.delivery.domain.*;
+import com.tw.joi.delivery.event.NotificationEvent;
 import com.tw.joi.delivery.seedData.SeedData;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,6 +17,9 @@ import java.util.UUID;
 @Slf4j
 @Service
 public class PaymentService {
+
+    @Autowired(required = false)
+    private ApplicationEventPublisher eventPublisher;
 
     public Payment initiatePayment(String orderId, String userId, PaymentMethod method, String idempotencyKey) {
         boolean[] wasNew = {false};
@@ -64,7 +70,7 @@ public class PaymentService {
             if (success) {
                 payment.setStatus(PaymentStatus.SUCCESS);
                 payment.setCompletedAt(LocalDateTime.now());
-                SeedData.notifications.add(Notification.builder()
+                publishNotification(Notification.builder()
                     .notificationId(UUID.randomUUID().toString())
                     .userId(userId)
                     .orderId(orderId)
@@ -78,7 +84,7 @@ public class PaymentService {
                 payment.setStatus(PaymentStatus.FAILED);
                 payment.setCompletedAt(LocalDateTime.now());
                 payment.setFailureReason("Payment processing failed");
-                SeedData.notifications.add(Notification.builder()
+                publishNotification(Notification.builder()
                     .notificationId(UUID.randomUUID().toString())
                     .userId(userId)
                     .orderId(orderId)
@@ -140,7 +146,7 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.REFUNDED);
         payment.setCompletedAt(LocalDateTime.now());
 
-        SeedData.notifications.add(Notification.builder()
+        publishNotification(Notification.builder()
             .notificationId(UUID.randomUUID().toString())
             .userId(userId)
             .orderId(payment.getOrderId())
@@ -152,5 +158,12 @@ public class PaymentService {
 
         log.info("Payment refunded: paymentId={} orderId={} userId={} amount={}", paymentId, payment.getOrderId(), userId, payment.getAmount());
         return payment;
+    }
+
+    private void publishNotification(Notification notification) {
+        SeedData.notifications.add(notification);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new NotificationEvent(notification));
+        }
     }
 }
