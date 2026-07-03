@@ -18,11 +18,11 @@ flowchart TD
     G --> H[Place order\nPOST /orders/place]
     H --> I[🔔 Notification: Order Confirmed]
     I --> J[Choose payment method\nCredit Card / UPI / Cash on Delivery]
-    J --> K[Initiate payment\nPOST /payments/initiate]
+    J --> K[Initiate payment\nPOST /payments/initiate\nheader: X-Idempotency-Key]
 
     K --> L{Payment\nsuccessful?}
     L -- No --> M[🔔 Notification: Payment Failed]
-    M --> N[Retry payment]
+    M --> N[Retry with same\nIdempotency Key]
     N --> K
 
     L -- Yes --> O[🔔 Notification: Payment Successful]
@@ -53,6 +53,8 @@ flowchart TD
 ```
 
 > **🔔 Notifications** are generated automatically at every key transition — the customer is always informed without having to poll for status.
+>
+> **🔑 Idempotency Key** — `POST /payments/initiate` requires a `X-Idempotency-Key` header. Retrying with the same key returns the cached result without creating a duplicate payment.
 
 ---
 
@@ -163,6 +165,38 @@ C4Component
 
 ---
 
+## Architectural Patterns
+
+### Idempotency Key — Payment fault tolerance
+
+`POST /payments/initiate` implements the **Idempotency Key** pattern to prevent duplicate charges on client retries (network timeouts, app crashes mid-request).
+
+**How it works:**
+
+```
+Client                          API                        idempotencyStore (Map)
+  │                              │                                │
+  │── POST /payments/initiate ──►│                                │
+  │   X-Idempotency-Key: abc123  │── get("abc123") ─────────────►│ (miss)
+  │                              │                                │
+  │                              │  [process payment]             │
+  │                              │── put("abc123", payment) ─────►│
+  │◄─ 201 { paymentId: "p-1" } ──│                                │
+  │                              │                                │
+  │  [timeout / retry]           │                                │
+  │── POST /payments/initiate ──►│                                │
+  │   X-Idempotency-Key: abc123  │── get("abc123") ─────────────►│ (hit)
+  │◄─ 201 { paymentId: "p-1" } ──│◄── return cached payment ──────│
+  │   (same result, no charge)   │                                │
+```
+
+**Rules:**
+- Same key → same response, no second charge, `SeedData.payments` stays at size 1
+- Different key → new payment processed independently
+- The store is a `ConcurrentHashMap<String, Payment>` in `SeedData.idempotencyStore`
+
+---
+
 ## API Endpoints
 
 | Method | Path | Description |
@@ -179,7 +213,7 @@ C4Component
 | `PATCH` | `/orders/{orderId}/status?userId=` | Update order status |
 | `GET` | `/tracking/{orderId}` | Full tracking history for an order |
 | `GET` | `/tracking/{orderId}/status` | Latest tracking status |
-| `POST` | `/payments/initiate` | Initiate a payment |
+| `POST` | `/payments/initiate` | Initiate a payment _(requires `X-Idempotency-Key` header)_ |
 | `GET` | `/payments/order/{orderId}?userId=` | Get payment for an order |
 | `POST` | `/payments/{paymentId}/refund?userId=` | Refund a payment |
 | `GET` | `/notifications?userId=` | List notifications |
