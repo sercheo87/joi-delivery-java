@@ -36,8 +36,7 @@ public class SeedData {
             groceryStores.size(), groceryProducts.size(), users.size(), cartForUsers.size());
     }
 
-    public static Cart createCartForUser(String userId, String firstName, String lastName,
-                                         String cartId) {
+    public static Cart createCartForUser(String userId, String firstName, String lastName,      String cartId) {
         return Cart.builder()
             .cartId(cartId)
             .outlet(store101)
@@ -67,8 +66,7 @@ public class SeedData {
         return random.nextInt(max - min) + min;
     }
 
-    private static GroceryProduct createGroceryProduct(String productName,
-                                                       String productId, GroceryStore store) {
+    private static GroceryProduct createGroceryProduct(String productName,    String productId, GroceryStore store) {
         return GroceryProduct.builder()
             .productName(productName)
             .productId(productId)

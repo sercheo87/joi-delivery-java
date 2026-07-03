@@ -45,8 +45,7 @@ public class FeedbackService {
                 });
 
             if (!userId.equals(order.getUserId())) {
-                log.warn("Feedback rejected — order does not belong to user: orderId={} requestedBy={} owner={}",
-                    orderId, userId, order.getUserId());
+                log.warn("Feedback rejected — order does not belong to user: orderId={} requestedBy={} owner={}", orderId, userId, order.getUserId());
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order does not belong to the user");
             }
 

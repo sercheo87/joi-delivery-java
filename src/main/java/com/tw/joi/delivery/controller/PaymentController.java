@@ -21,8 +21,7 @@ public class PaymentController {
     public ResponseEntity<Payment> initiatePayment(
         @RequestHeader("X-Idempotency-Key") String idempotencyKey,
         @RequestBody InitiatePaymentRequest request) {
-        log.info("POST /payments/initiate orderId={} userId={} method={} idempotencyKey={}",
-            request.orderId(), request.userId(), request.method(), idempotencyKey);
+        log.info("POST /payments/initiate orderId={} userId={} method={} idempotencyKey={}", request.orderId(), request.userId(), request.method(), idempotencyKey);
         Payment payment = paymentService.initiatePayment(request.orderId(), request.userId(), request.method(), idempotencyKey);
         return ResponseEntity.status(HttpStatus.CREATED).body(payment);
     }

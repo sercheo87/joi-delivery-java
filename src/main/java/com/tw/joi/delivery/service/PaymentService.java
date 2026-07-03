@@ -18,8 +18,7 @@ public class PaymentService {
     public Payment initiatePayment(String orderId, String userId, PaymentMethod method, String idempotencyKey) {
         Payment cached = SeedData.idempotencyStore.get(idempotencyKey);
         if (cached != null) {
-            log.warn("Idempotency hit — returning cached result: key={} paymentId={} status={}",
-                idempotencyKey, cached.getPaymentId(), cached.getStatus());
+            log.warn("Idempotency hit — returning cached result: key={} paymentId={} status={}", idempotencyKey, cached.getPaymentId(), cached.getStatus());
             return cached;
         }
 
@@ -32,8 +31,7 @@ public class PaymentService {
             });
 
         if (!userId.equals(order.getUserId())) {
-            log.warn("Payment rejected — order does not belong to user: orderId={} requestedBy={} owner={}",
-                orderId, userId, order.getUserId());
+            log.warn("Payment rejected — order does not belong to user: orderId={} requestedBy={} owner={}", orderId, userId, order.getUserId());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Order does not belong to the user");
         }
 
@@ -75,8 +73,7 @@ public class PaymentService {
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build());
-            log.info("Payment successful: paymentId={} orderId={} userId={} method={} amount={}",
-                payment.getPaymentId(), orderId, userId, method, payment.getAmount());
+            log.info("Payment successful: paymentId={} orderId={} userId={} method={} amount={}", payment.getPaymentId(), orderId, userId, method, payment.getAmount());
         } else {
             payment.setStatus(PaymentStatus.FAILED);
             payment.setCompletedAt(LocalDateTime.now());
@@ -90,8 +87,7 @@ public class PaymentService {
                 .read(false)
                 .createdAt(LocalDateTime.now())
                 .build());
-            log.warn("Payment failed: paymentId={} orderId={} userId={} method={} reason={}",
-                payment.getPaymentId(), orderId, userId, method, payment.getFailureReason());
+            log.warn("Payment failed: paymentId={} orderId={} userId={} method={} reason={}", payment.getPaymentId(), orderId, userId, method, payment.getFailureReason());
         }
 
         SeedData.payments.add(payment);
@@ -109,8 +105,7 @@ public class PaymentService {
             });
 
         if (!userId.equals(payment.getUserId())) {
-            log.warn("Payment access rejected — does not belong to user: paymentId={} requestedBy={} owner={}",
-                payment.getPaymentId(), userId, payment.getUserId());
+            log.warn("Payment access rejected — does not belong to user: paymentId={} requestedBy={} owner={}", payment.getPaymentId(), userId, payment.getUserId());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Payment does not belong to the user");
         }
 
@@ -128,14 +123,12 @@ public class PaymentService {
             });
 
         if (!userId.equals(payment.getUserId())) {
-            log.warn("Refund rejected — payment does not belong to user: paymentId={} requestedBy={} owner={}",
-                paymentId, userId, payment.getUserId());
+            log.warn("Refund rejected — payment does not belong to user: paymentId={} requestedBy={} owner={}", paymentId, userId, payment.getUserId());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Payment does not belong to the user");
         }
 
         if (payment.getStatus() != PaymentStatus.SUCCESS) {
-            log.warn("Refund rejected — payment not in SUCCESS state: paymentId={} currentStatus={}",
-                paymentId, payment.getStatus());
+            log.warn("Refund rejected — payment not in SUCCESS state: paymentId={} currentStatus={}", paymentId, payment.getStatus());
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only successful payments can be refunded");
         }
 
@@ -152,8 +145,7 @@ public class PaymentService {
             .createdAt(LocalDateTime.now())
             .build());
 
-        log.info("Payment refunded: paymentId={} orderId={} userId={} amount={}",
-            paymentId, payment.getOrderId(), userId, payment.getAmount());
+        log.info("Payment refunded: paymentId={} orderId={} userId={} amount={}", paymentId, payment.getOrderId(), userId, payment.getAmount());
         return payment;
     }
 }
