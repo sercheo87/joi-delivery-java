@@ -1,6 +1,7 @@
 package com.tw.joi.delivery.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tw.joi.delivery.domain.Cart;
 import com.tw.joi.delivery.dto.request.AddProductRequest;
@@ -9,6 +10,7 @@ import com.tw.joi.delivery.seedData.SeedData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.server.ResponseStatusException;
 
 class CartServiceTest {
 
@@ -21,6 +23,7 @@ class CartServiceTest {
     @BeforeEach
     void setUp() {
         SeedData.cartForUsers.get(USER_ID).getProducts().clear();
+        SeedData.groceryProducts.forEach(p -> p.setAvailableStock(30));
         cartService = new CartService(new UserService(), new ProductService(new StoreService()));
     }
 
@@ -41,6 +44,24 @@ class CartServiceTest {
         assertThat(cartProductInfo.cart().getProducts()).hasSize(1);
         assertThat(cartProductInfo.product().getProductId()).isEqualTo(PRODUCT_ID);
         assertThat(cartProductInfo.sellingPrice()).isNull();
+    }
+
+    @Test
+    @DisplayName("Given a product with no stock, when added to cart, then 400 is thrown")
+    void shouldRejectOutOfStockProduct() {
+        SeedData.groceryProducts.stream()
+            .filter(p -> PRODUCT_ID.equals(p.getProductId()))
+            .findFirst().orElseThrow()
+            .setAvailableStock(0);
+
+        AddProductRequest request = new AddProductRequest();
+        request.setUserId(USER_ID);
+        request.setProductId(PRODUCT_ID);
+        request.setOutletId(OUTLET_ID);
+
+        assertThatThrownBy(() -> cartService.addProductToCartForUser(request))
+            .isInstanceOf(ResponseStatusException.class)
+            .hasMessageContaining("Product is out of stock");
     }
 
     @Test
