@@ -84,6 +84,17 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
+
+        SeedData.notifications.add(Notification.builder()
+            .notificationId(UUID.randomUUID().toString())
+            .userId(order.getUserId())
+            .orderId(orderId)
+            .title("Order Cancelled")
+            .message(String.format("Your order #%s has been cancelled.", orderId))
+            .read(false)
+            .createdAt(LocalDateTime.now())
+            .build());
+
         return order;
     }
 
